@@ -11,7 +11,7 @@ import { initDatabase } from './src/database/sqlite';
 
 function AppContent() {
     const { mode, setTheme } = useTheme();
-    const { isUnlocked, lock } = useAuthStore();
+    const { isUnlocked, lock, checkSession } = useAuthStore();
     const { loadSettings, settings } = useSettingsStore();
     const [dbReady, setDbReady] = useState(false);
     const appState = useRef(AppState.currentState);
@@ -20,6 +20,7 @@ function AppContent() {
         const init = async () => {
             try {
                 await initDatabase();
+                await checkSession();
                 setDbReady(true);
                 await loadSettings();
             } catch (err) {
@@ -44,9 +45,13 @@ function AppContent() {
                 appState.current.match(/active/) &&
                 (nextAppState === 'background' || nextAppState === 'inactive')
             ) {
-                // Auto-save any in-progress quotation before locking
+                // Auto-save any in-progress quotation
                 await useQuotationStore.getState().autoSaveDraft();
-                lock();
+                // We DON'T lock immediately anymore on background 
+                // We rely on session check at startup and re-focus
+            }
+            if (nextAppState === 'active') {
+                await checkSession();
             }
             appState.current = nextAppState;
         });

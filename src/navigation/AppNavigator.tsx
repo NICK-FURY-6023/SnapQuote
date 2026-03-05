@@ -11,6 +11,8 @@ import { SettingsScreen } from '../screens/SettingsScreen';
 import { QuotationEditor } from '../screens/QuotationEditor';
 import { CustomerDetails } from '../screens/CustomerDetails';
 import { PreviewScreen } from '../screens/PreviewScreen';
+import { ScanScreen } from '../screens/ScanScreen';
+import { TextInputScreen } from '../screens/TextInputScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -45,7 +47,7 @@ function HomeTabs() {
                     right: 20,
                     height: 64,
                     borderRadius: 32,
-                    backgroundColor: mode === 'dark' ? '#0F0F0F' : '#FFFFFF',
+                    backgroundColor: mode === 'dark' ? '#0a0e27' : '#FFFFFF',
                     borderTopWidth: 0,
                     borderWidth: 1,
                     borderColor: colors.glassBorder,
@@ -73,6 +75,13 @@ function HomeTabs() {
                 component={SavedQuotations}
                 options={{
                     tabBarIcon: ({ focused }) => <TabIcon label="Quotes" icon="📋" focused={focused} />,
+                }}
+            />
+            <Tab.Screen
+                name="Scan"
+                component={ScanScreen}
+                options={{
+                    tabBarIcon: ({ focused }) => <TabIcon label="Scan" icon="📸" focused={focused} />,
                 }}
             />
             <Tab.Screen
@@ -104,6 +113,7 @@ export function AppNavigator() {
                 <Stack.Screen name="CustomerDetails" component={CustomerDetails} />
                 <Stack.Screen name="PreviewScreen" component={PreviewScreen} />
                 <Stack.Screen name="SavedQuotations" component={SavedQuotations} />
+                <Stack.Screen name="TextInputScreen" component={TextInputScreen} />
             </Stack.Navigator>
         </NavigationContainer>
     );

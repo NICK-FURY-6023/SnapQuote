@@ -64,8 +64,8 @@ const styles = StyleSheet.create({
         letterSpacing: 0.5,
     },
     input: {
-        height: 48,
-        borderRadius: 14,
+        height: 52,
+        borderRadius: 16,
         borderWidth: 1,
         paddingHorizontal: 16,
         fontSize: 16,

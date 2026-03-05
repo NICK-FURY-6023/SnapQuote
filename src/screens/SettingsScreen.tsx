@@ -14,6 +14,7 @@ export const SettingsScreen: React.FC = () => {
     const { settings, loadSettings, updateSettings } = useSettingsStore();
     const { changePassword } = useAuthStore();
     const [newPassword, setNewPassword] = useState('');
+    const [masterPassword, setMasterPassword] = useState('');
     const [syncing, setSyncing] = useState(false);
 
     useEffect(() => {
@@ -39,9 +40,18 @@ export const SettingsScreen: React.FC = () => {
             Alert.alert('Error', 'Password must be at least 4 characters.');
             return;
         }
-        await changePassword(newPassword);
-        setNewPassword('');
-        Alert.alert('✅ Success', 'Password changed successfully!');
+        if (!masterPassword) {
+            Alert.alert('Error', 'Master Password is required.');
+            return;
+        }
+        const success = await changePassword(newPassword, masterPassword);
+        if (success) {
+            setNewPassword('');
+            setMasterPassword('');
+            Alert.alert('✅ Success', 'App password changed successfully!');
+        } else {
+            Alert.alert('❌ Denied', 'Invalid Master Password. Only NICK FURY can change this.');
+        }
     };
 
     return (
@@ -146,18 +156,25 @@ export const SettingsScreen: React.FC = () => {
                 <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>🔒 SECURITY</Text>
                 <GlassCard>
                     <GlassInput
-                        label="New Password"
+                        label="Master Password (Admin Only)"
+                        value={masterPassword}
+                        onChangeText={setMasterPassword}
+                        placeholder="Enter master password to authorize"
+                        secureTextEntry
+                    />
+                    <GlassInput
+                        label="New App Password"
                         value={newPassword}
                         onChangeText={setNewPassword}
-                        placeholder="Enter new password"
+                        placeholder="Enter new app password"
                         secureTextEntry
                     />
                     <GlassButton
-                        title="Change Password"
+                        title="Change App Password"
                         onPress={handleChangePassword}
                         variant="primary"
                         fullWidth
-                        disabled={newPassword.length < 4}
+                        disabled={newPassword.length < 4 || !masterPassword}
                     />
                 </GlassCard>
 
@@ -195,8 +212,8 @@ export const SettingsScreen: React.FC = () => {
                     </View>
                     <View style={[styles.aboutDivider, { backgroundColor: colors.border }]} />
                     <View style={styles.aboutRow}>
-                        <Text style={[styles.aboutLabel, { color: colors.textSecondary }]}>Made with</Text>
-                        <Text style={[styles.aboutValue, { color: colors.text }]}>❤️ React Native</Text>
+                        <Text style={[styles.aboutLabel, { color: colors.textSecondary }]}>Developed by</Text>
+                        <Text style={[styles.aboutValue, { color: colors.accent, fontWeight: '800' }]}>NICK FURY</Text>
                     </View>
                 </GlassCard>
 

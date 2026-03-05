@@ -53,7 +53,9 @@ export const PreviewScreen: React.FC = () => {
                     <Text style={[styles.backBtn, { color: colors.accent }]}>← Back</Text>
                 </TouchableOpacity>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Quotation Preview</Text>
-                <View style={{ width: 48 }} />
+                <TouchableOpacity onPress={() => navigation.navigate('QuotationEditor')} style={{ width: 48, alignItems: 'flex-end' }}>
+                    <Text style={{ fontSize: 20 }}>✏️</Text>
+                </TouchableOpacity>
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollContent}>

@@ -187,7 +187,7 @@ export const QuotationEditor: React.FC = () => {
                         activeOpacity={0.7}
                     >
                         <Text style={[styles.addRowIcon, { color: colors.accent }]}>＋</Text>
-                        <Text style={[styles.addRowText, { color: colors.accent }]}>Add Row</Text>
+                        <Text style={[styles.addRowText, { color: colors.accent }]}>Add Custom Item</Text>
                     </TouchableOpacity>
                 </GlassCard>
 
@@ -295,23 +295,24 @@ const styles = StyleSheet.create({
         flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 12,
         borderBottomWidth: 1,
     },
-    th: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+    th: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
     tableRow: {
         flexDirection: 'row', alignItems: 'center',
-        paddingHorizontal: 12, paddingVertical: 8,
-        borderBottomWidth: 0.5, minHeight: 48,
+        paddingHorizontal: 8, paddingVertical: 12,
+        borderBottomWidth: 0.5, minHeight: 60,
     },
-    td: { fontSize: 14, fontWeight: '500' },
+    td: { fontSize: 14, fontWeight: '600' },
     cellInput: {
-        fontSize: 13, paddingHorizontal: 6, paddingVertical: 4,
-        borderWidth: 1, borderRadius: 8, marginHorizontal: 2, height: 34,
+        fontSize: 15, paddingHorizontal: 8, paddingVertical: 6,
+        borderWidth: 1, borderRadius: 8, marginHorizontal: 4, height: 44,
+        fontWeight: '500',
     },
     unitBtn: {
-        flex: 0.4, height: 34, borderRadius: 8, borderWidth: 1,
-        justifyContent: 'center', alignItems: 'center', marginHorizontal: 2,
+        flex: 0.4, height: 44, borderRadius: 8, borderWidth: 1,
+        justifyContent: 'center', alignItems: 'center', marginHorizontal: 4,
     },
-    unitText: { fontSize: 11, fontWeight: '600' },
-    totalCell: { fontSize: 13, fontWeight: '600' },
+    unitText: { fontSize: 13, fontWeight: '700' },
+    totalCell: { fontSize: 15, fontWeight: '700' },
     deleteBtn: { marginTop: 2 },
     deleteBtnText: { fontSize: 12, fontWeight: '700' },
     addRowBtn: {
