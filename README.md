@@ -74,6 +74,19 @@
 
 ## 🎨 Screenshots & UI/UX Design
 
+SnapQuote is built with a stunning **Liquid Glass** aesthetic. Here are some of the core screens from the design phase:
+
+<table>
+  <tr>
+    <td align="center"><b>Quotation Editor</b><br><img src="https://lh3.googleusercontent.com/aida/AOfcidWJgg7HORO2p8cFjeNofpAMBos7WCNvqaHnag1Kpc4LVr-I-a4lwjXiae43fDF0J9LdN8JgaCOpUdkceTlPJwQCdZrzIKbCGYqT_0QD6kCS0Hlgj5k8xkCbzePjyoo-SvVKgERtTtR3D73-drtZBdtgimxq-KvkBkFiWOlzO6cbnWxroRuGpc9yyDU-VQ9rNehVBzfPkr4AR68v79_AE2yPPR6mJ9UVJSKzADGvEaKZj-1ajhZYNu8wWms" width="250" /></td>
+    <td align="center"><b>Customer Details</b><br><img src="https://lh3.googleusercontent.com/aida/AOfcidW61ITuFhcGal0b4G-G7XslPruBtpxdXKS4_HUJle7xSf0DqY1VNd3gisIDM6tiA6mMzyQ2mprZIkm56vPL5mXPopSbPtVMyq2BSFvSQMvthLDEdfTzuUzeVaXGQ8Ae0ArXyw3e6fWVFsAS0r9Ca5B5JOa1rBwlk1jF7twxTnRZgYy48878jW3umiCa0MOp2HmyvTqO8JmTU-Dl8G2_p1_Vv9ElzDT0ny0gFyyyHoAWT_PgTM2IJVgv7w" width="250" /></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Saved Quotations</b><br><img src="https://lh3.googleusercontent.com/aida/AOfcidXphSdbCcADvN3Y1NPHOkz4ggidXdAcxIg_HUj3PIObGz2SXGU_BStDdg3Ok8Nw5JIWgLX9xFsg6BHS39sCV_oR2ffwq3BrZyYw99pM7CcCDfoxxQb7flP54Eedxe_RTl-3I1edSnCf1xZQIGAeaEPME2M-5adlaslmg_GkH5LryPBJIFVvnz2-9WxXS4bU6UiZm0j-Y3caxDZnTFZ7Zcmvzn6R-HqjmDpGXgyuA6wQXfdZYF2Xs-ouMOo" width="250" /></td>
+    <td align="center"><b>Settings & Sync</b><br><img src="https://lh3.googleusercontent.com/aida/AOfcidX4Pfcm0Pldn4znxtqP4xwle84MfRUi6rfHsn-1OcdzPegg-a0Ef2DnZXtSYr7FgAYUhV1M5NjRg5FKAJTJTs34xuZqHIxnJaLpd6wRLso53T14uYwp6rkF_Gjz7Dlq76LZI0sTWuq07ra8Decbx20bSFEjB4iGnSln-nwbyoy0wrBnFp308ElKijOEkZL0DtYH_BdrjJ4Alhh0gSOYU6LmVxulrfAWxM4tQwXAvYDvTXHBb9fp5jlDQl4" width="250" /></td>
+  </tr>
+</table>
+
 ### Design Philosophy — "Liquid Glass"
 
 SnapQuote uses a **Liquid Glass** design language that prioritizes:
