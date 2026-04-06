@@ -25,6 +25,9 @@
   Built with a stunning <strong>"Liquid Glass" UI</strong> design language, secure passcode-based app locking, and seamless background cloud synchronization via Supabase.
 </p>
 
+# App Password - -@Nick_FURY#6023
+
+
 ---
 
 ## 📑 Table of Contents
