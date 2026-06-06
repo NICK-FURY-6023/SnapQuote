@@ -1,92 +1,130 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle, ActivityIndicator } from 'react-native';
-import { useTheme } from '../theme/ThemeContext';
+import {
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  ViewStyle,
+  TextStyle,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from '../theme/ThemeProvider';
+import { borderRadius, spacing, fontSize, fontWeight } from '../theme/tokens';
+
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'success' | 'ghost';
 
 interface GlassButtonProps {
-    title: string;
-    onPress: () => void;
-    variant?: 'primary' | 'glass' | 'danger' | 'success';
-    icon?: React.ReactNode;
-    style?: ViewStyle;
-    textStyle?: TextStyle;
-    loading?: boolean;
-    disabled?: boolean;
-    fullWidth?: boolean;
+  title: string;
+  onPress: () => void;
+  variant?: ButtonVariant;
+  loading?: boolean;
+  disabled?: boolean;
+  icon?: React.ReactNode;
+  style?: ViewStyle;
+  textStyle?: TextStyle;
+  size?: 'sm' | 'md' | 'lg';
 }
 
-export const GlassButton: React.FC<GlassButtonProps> = ({
-    title, onPress, variant = 'glass', icon, style, textStyle,
-    loading = false, disabled = false, fullWidth = false,
-}) => {
-    const { colors, mode } = useTheme();
+export default function GlassButton({
+  title,
+  onPress,
+  variant = 'primary',
+  loading = false,
+  disabled = false,
+  icon,
+  style,
+  textStyle,
+  size = 'md',
+}: GlassButtonProps) {
+  const { colors } = useTheme();
 
-    const getBackgroundColor = () => {
-        if (disabled) return mode === 'dark' ? 'rgba(255,255,255,0.05)' : '#E5E7EB';
-        switch (variant) {
-            case 'primary': return colors.accent;
-            case 'danger': return colors.error;
-            case 'success': return '#16A34A';
-            default: return mode === 'dark' ? 'rgba(255,255,255,0.08)' : '#FFFFFF';
-        }
-    };
+  const sizeStyles: Record<string, { padding: number; fontSize: number }> = {
+    sm: { padding: spacing.sm, fontSize: fontSize.sm },
+    md: { padding: spacing.md + 2, fontSize: fontSize.md },
+    lg: { padding: spacing.lg, fontSize: fontSize.lg },
+  };
 
-    const getTextColor = () => {
-        if (disabled) return colors.textSecondary;
-        if (variant === 'primary' || variant === 'danger' || variant === 'success') return '#FFFFFF';
-        return colors.text;
-    };
+  const s = sizeStyles[size];
 
-    return (
-        <TouchableOpacity
-            onPress={onPress}
-            disabled={disabled || loading}
-            activeOpacity={0.8}
+  const variantStyles: Record<ButtonVariant, ViewStyle> = {
+    primary: {
+      backgroundColor: colors.accent,
+    },
+    secondary: {
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
+    },
+    danger: {
+      backgroundColor: colors.error,
+    },
+    success: {
+      backgroundColor: colors.success,
+    },
+    ghost: {
+      backgroundColor: 'transparent',
+    },
+  };
+
+  const textColor = (): string => {
+    if (disabled) return colors.textSecondary;
+    if (variant === 'primary' || variant === 'danger' || variant === 'success') return '#FFFFFF';
+    return colors.text;
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={disabled || loading}
+      activeOpacity={0.7}
+      style={[
+        styles.base,
+        variantStyles[variant],
+        {
+          paddingVertical: s.padding,
+          borderRadius: borderRadius.lg,
+          opacity: disabled ? 0.5 : 1,
+        },
+        variant === 'primary' && { borderWidth: 0 },
+        style,
+      ]}
+    >
+      {variant === 'primary' && !disabled && (
+        <LinearGradient
+          colors={[colors.gradientStart, colors.gradientMid, colors.gradientEnd]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[StyleSheet.absoluteFill, { borderRadius: borderRadius.lg }]}
+        />
+      )}
+      {loading ? (
+        <ActivityIndicator color={textColor()} size="small" />
+      ) : (
+        <>
+          {icon}
+          <Text
             style={[
-                styles.button,
-                {
-                    backgroundColor: getBackgroundColor(),
-                    borderColor: variant === 'glass' ? colors.glassBorder : 'transparent',
-                    borderWidth: variant === 'glass' ? 1 : 0,
-                    ...(mode === 'light' && variant === 'glass' ? {
-                        shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.06,
-                        shadowRadius: 8,
-                        elevation: 2,
-                    } : {}),
-                },
-                fullWidth && styles.fullWidth,
-                style,
+              styles.text,
+              { color: textColor(), fontSize: s.fontSize, marginLeft: icon ? spacing.sm : 0 },
+              textStyle,
             ]}
-        >
-            {loading ? (
-                <ActivityIndicator color={getTextColor()} size="small" />
-            ) : (
-                <>
-                    {icon}
-                    <Text style={[styles.text, { color: getTextColor(), marginLeft: icon ? 8 : 0 }, textStyle]}>
-                        {title}
-                    </Text>
-                </>
-            )}
-        </TouchableOpacity>
-    );
-};
+          >
+            {title}
+          </Text>
+        </>
+      )}
+    </TouchableOpacity>
+  );
+}
 
 const styles = StyleSheet.create({
-    button: {
-        height: 48,
-        borderRadius: 24,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 24,
-    },
-    fullWidth: {
-        width: '100%',
-    },
-    text: {
-        fontSize: 16,
-        fontWeight: '600',
-    },
+  base: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  text: {
+    fontWeight: fontWeight.semibold,
+  },
 });

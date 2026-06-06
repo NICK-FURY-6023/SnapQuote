@@ -1,90 +1,92 @@
-import { supabase } from './supabaseClient';
+import {
+  collection, doc, setDoc, getDoc, getDocs, deleteDoc, query, where, writeBatch,
+} from 'firebase/firestore';
+import { getFirestoreDb } from './firebase';
 import * as db from '../database/sqlite';
-import { Quotation, QuotationItem } from '../types';
-import NetInfo from '@react-native-community/netinfo';
+import { Quotation, QuotationItem, SyncResult } from '../types';
 
-export async function syncToSupabase(): Promise<{ synced: number; errors: number }> {
-    let synced = 0;
-    let errors = 0;
+const QUOTATIONS_COLLECTION = 'quotations';
+const ITEMS_COLLECTION = 'quotation_items';
 
-    try {
-        // Check connectivity
-        const netState = await NetInfo.fetch();
-        if (!netState.isConnected) {
-            return { synced: 0, errors: 0 };
+export async function syncQuotations(): Promise<SyncResult> {
+  const result: SyncResult = { synced: 0, errors: 0, failedIds: [] };
+  const firestore = getFirestoreDb();
+
+  try {
+    // Get all locally unsynced quotations
+    const allQuotes = await db.getAllQuotations();
+    const pending = allQuotes.filter((q) => q.sync_status !== 'synced');
+
+    for (const quote of pending) {
+      try {
+        const items = await db.getQuotationItems(quote.id);
+
+        // Write quotation to Firestore
+        const quoteRef = doc(firestore, QUOTATIONS_COLLECTION, quote.id);
+        await setDoc(quoteRef, {
+          ...quote,
+          items: [], // Don't embed items — they're in subcollection
+          updated_at: new Date().toISOString(),
+        });
+
+        // Write items as subcollection
+        const batch = writeBatch(firestore);
+        for (const item of items) {
+          const itemRef = doc(firestore, QUOTATIONS_COLLECTION, quote.id, ITEMS_COLLECTION, item.id);
+          batch.set(itemRef, item);
         }
+        await batch.commit();
 
-        // Get unsynced quotations
-        const unsyncedQuotations = await db.getUnsyncedQuotations();
+        // Mark as synced locally
+        await db.saveQuotation({ ...quote, sync_status: 'synced' });
+        result.synced++;
 
-        for (const q of unsyncedQuotations) {
-            try {
-                // Upsert quotation to Supabase
-                const { error: qError } = await supabase
-                    .from('quotations')
-                    .upsert({
-                        id: q.id,
-                        user_id: q.user_id,
-                        customer_name: q.customer_name,
-                        phone: q.phone,
-                        address: q.address,
-                        quote_date: q.quote_date,
-                        subtotal: q.subtotal,
-                        discount_percent: q.discount_percent,
-                        discount_amount: q.discount_amount,
-                        extra_charge: q.extra_charge,
-                        final_total: q.final_total,
-                        quote_number: q.quote_number,
-                        sync_status: 'synced',
-                        created_at: q.created_at,
-                        updated_at: q.updated_at,
-                    }, { onConflict: 'id' });
-
-                if (qError) {
-                    console.error('Sync quotation error:', qError);
-                    errors++;
-                    continue;
-                }
-
-                // Get and sync items
-                const items = await db.getQuotationItems(q.id);
-                if (items.length > 0) {
-                    // Delete existing items in Supabase for this quotation
-                    await supabase.from('quotation_items').delete().eq('quotation_id', q.id);
-
-                    // Insert all items
-                    const { error: iError } = await supabase
-                        .from('quotation_items')
-                        .insert(items.map(item => ({
-                            id: item.id,
-                            quotation_id: item.quotation_id,
-                            item_no: item.item_no,
-                            item_name: item.item_name,
-                            quantity: item.quantity,
-                            unit: item.unit,
-                            rate: item.rate,
-                            total: item.total,
-                            created_at: item.created_at,
-                        })));
-
-                    if (iError) {
-                        console.error('Sync items error:', iError);
-                        errors++;
-                        continue;
-                    }
-                }
-
-                // Mark as synced locally
-                await db.markQuotationSynced(q.id);
-                synced++;
-            } catch (err) {
-                console.error('Sync error for quotation:', q.id, err);
-                errors++;
-            }
-        }
-    } catch (err) {
-        console.error('Sync failed:', err);
+        // Trigger Discord webhook via Cloud Function
+        // The Cloud Function listens on Firestore quotations collection onCreate/onUpdate
+        // and sends the Discord notification server-side.
+      } catch (err) {
+        result.errors++;
+        result.failedIds.push(quote.id);
+      }
     }
+  } catch (err) {
+    console.warn('Sync operation failed:', err);
+  }
 
-    return { synced, errors };
+  return result;
+}
+
+export async function pullFromCloud(): Promise<number> {
+  const firestore = getFirestoreDb();
+  let pulled = 0;
+
+  try {
+    const quotesRef = collection(firestore, QUOTATIONS_COLLECTION);
+    const snapshot = await getDocs(quotesRef);
+
+    for (const docSnap of snapshot.docs) {
+      const data = docSnap.data() as Quotation;
+
+      // Check if local version is newer
+      const local = await db.getQuotationById(data.id);
+      if (local && local.updated_at >= data.updated_at) continue;
+
+      // Pull items subcollection
+      const itemsRef = collection(firestore, QUOTATIONS_COLLECTION, data.id, ITEMS_COLLECTION);
+      const itemsSnap = await getDocs(itemsRef);
+      const items: QuotationItem[] = itemsSnap.docs.map((d) => d.data() as QuotationItem);
+
+      // Save locally
+      await db.saveQuotation({ ...data, sync_status: 'synced' });
+      await db.deleteQuotationItems(data.id);
+      if (items.length > 0) {
+        await db.saveQuotationItems(items);
+      }
+      pulled++;
+    }
+  } catch (err) {
+    console.warn('Pull from cloud failed:', err);
+  }
+
+  return pulled;
 }
