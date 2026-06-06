@@ -1,192 +1,185 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import { useTheme } from '../theme/ThemeContext';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Icon from 'react-native-vector-icons/Ionicons';
+import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
+import GlassContainer from '../components/GlassContainer';
+import GlassCard from '../components/GlassCard';
+import GlassButton from '../components/GlassButton';
+import { useTheme } from '../theme/ThemeProvider';
 import { useQuotationStore } from '../stores/quotationStore';
+import { spacing, fontSize, fontWeight, borderRadius } from '../theme/tokens';
+import { RootStackParamList } from '../navigation/navigationRef';
 
-export const ScanScreen: React.FC = () => {
-    const { colors, mode } = useTheme();
-    const navigation = useNavigation<any>();
-    const [permission, requestPermission] = useCameraPermissions();
-    const [isProcessing, setIsProcessing] = useState(false);
-    const cameraRef = useRef<CameraView>(null);
-    const { createNewQuotation, updateItem } = useQuotationStore();
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-    if (!permission) {
-        return <View style={{ flex: 1, backgroundColor: colors.background }} />;
+export default function ScanScreen() {
+  const { colors } = useTheme();
+  const navigation = useNavigation<NavigationProp>();
+  const { hasPermission, requestPermission } = useCameraPermission();
+  const device = useCameraDevice('back');
+  const cameraRef = useRef<Camera>(null);
+  const [capturing, setCapturing] = useState(false);
+
+  const handleCapture = async () => {
+    if (!cameraRef.current) return;
+    setCapturing(true);
+    try {
+      const photo = await cameraRef.current.takePhoto({});
+
+      if (photo?.path) {
+        navigation.navigate('TextInput', { photoUri: `file://${photo.path}` });
+      }
+    } catch (err) {
+      console.warn('Capture failed:', err);
     }
+    setCapturing(false);
+  };
 
-    if (!permission.granted) {
-        return (
-            <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', padding: 20 }]}>
-                <Text style={[styles.message, { color: colors.text }]}>We need your permission to show the camera</Text>
-                <TouchableOpacity onPress={requestPermission} style={[styles.btn, { backgroundColor: colors.accent }]}>
-                    <Text style={{ color: '#fff', fontWeight: 'bold' }}>Grant Permission</Text>
-                </TouchableOpacity>
-            </View>
-        );
-    }
+  const handleTypeInstead = () => {
+    navigation.navigate('TextInput');
+  };
 
-    const handleCapture = async () => {
-        if (!cameraRef.current) return;
-        try {
-            // Fake OCR process for UI prototype
-            setIsProcessing(true);
-            const photo = await cameraRef.current.takePictureAsync({
-                quality: 0.5,
-                base64: false,
-            });
-
-            // Simulate parsing delay (e.g. cloud API)
-            setTimeout(() => {
-                setIsProcessing(false);
-
-                // Create a new quotation with "scanned" items
-                createNewQuotation();
-
-                // Add 2 dummy items pretending they were scanned
-                updateItem(0, 'item_name', 'Scanned Item 1');
-                updateItem(0, 'quantity', 2);
-                updateItem(0, 'rate', 500);
-
-                useQuotationStore.getState().addItem();
-                updateItem(1, 'item_name', 'Scanned Item 2');
-                updateItem(1, 'quantity', 5);
-                updateItem(1, 'rate', 150);
-
-                Alert.alert('Scan Complete', 'Extracted 2 items from image.');
-                navigation.navigate('QuotationEditor', { isNew: false });
-            }, 1500);
-
-        } catch (error) {
-            setIsProcessing(false);
-            Alert.alert('Error', 'Failed to capture image');
-        }
-    };
-
+  // Camera not available (no back camera)
+  if (!device) {
     return (
-        <View style={styles.container}>
-            <CameraView
-                style={styles.camera}
-                facing="back"
-                ref={cameraRef}
-            >
-                {/* Header Overlay */}
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
-                        <Text style={styles.iconText}>✕</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Scan Document</Text>
-                    <TouchableOpacity style={styles.iconBtn}>
-                        <Text style={styles.iconText}>⚡</Text>
-                    </TouchableOpacity>
-                </View>
-
-                {/* Viewfinder Frame */}
-                <View style={styles.viewfinderContainer}>
-                    <View style={styles.viewfinderFrame}>
-                        <View style={[styles.corner, styles.topLeft]} />
-                        <View style={[styles.corner, styles.topRight]} />
-                        <View style={[styles.corner, styles.bottomLeft]} />
-                        <View style={[styles.corner, styles.bottomRight]} />
-                    </View>
-                    <Text style={styles.instructionText}>
-                        Align your quotation within the frame
-                    </Text>
-                </View>
-
-                {/* Processing Overlay */}
-                {isProcessing && (
-                    <View style={styles.processingOverlay}>
-                        <ActivityIndicator size="large" color="#3C3CF6" />
-                        <Text style={styles.processingText}>Extracting text using AI...</Text>
-                    </View>
-                )}
-
-                {/* Bottom Controls */}
-                <View style={styles.bottomControls}>
-                    <TouchableOpacity style={styles.secondaryBtn}>
-                        <Text style={styles.secondaryBtnIcon}>🖼</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={styles.captureBtnWrapper}
-                        onPress={handleCapture}
-                        disabled={isProcessing}
-                    >
-                        <View style={styles.captureBtnInner} />
-                    </TouchableOpacity>
-
-                    <View style={styles.secondaryBtn}>
-                        <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>AUTO</Text>
-                    </View>
-                </View>
-            </CameraView>
-        </View>
+      <GlassContainer>
+        <SafeAreaView style={styles.safe}>
+          <View style={styles.center}>
+            <Icon name="camera-outline" size={64} color={colors.textSecondary} />
+            <Text style={[styles.permissionText, { color: colors.text }]}>Camera not available</Text>
+            <Text style={[styles.permissionSub, { color: colors.textSecondary }]}>
+              No camera detected on this device.
+            </Text>
+            <GlassButton title="Type Instead" onPress={handleTypeInstead} style={{ marginTop: spacing.lg }} />
+          </View>
+        </SafeAreaView>
+      </GlassContainer>
     );
-};
+  }
+
+  if (!hasPermission) {
+    return (
+      <GlassContainer>
+        <SafeAreaView style={styles.safe}>
+          <View style={styles.center}>
+            <Icon name="camera-outline" size={64} color={colors.textSecondary} />
+            <Text style={[styles.permissionText, { color: colors.text }]}>Camera access needed</Text>
+            <Text style={[styles.permissionSub, { color: colors.textSecondary }]}>
+              SnapQuote needs camera access to scan products for quotations.
+            </Text>
+            <GlassButton title="Grant Permission" onPress={requestPermission} style={{ marginTop: spacing.lg }} />
+          </View>
+        </SafeAreaView>
+      </GlassContainer>
+    );
+  }
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Camera
+        ref={cameraRef}
+        style={StyleSheet.absoluteFill}
+        device={device}
+        isActive={true}
+        photo={true}
+      >
+        {/* Overlay */}
+        <View style={styles.overlay}>
+          <SafeAreaView style={styles.safe} edges={['top']}>
+            <View style={[styles.topBar, { backgroundColor: colors.glass }]}>
+              <TouchableOpacity onPress={() => navigation.goBack()}>
+                <Icon name="close" size={28} color={colors.text} />
+              </TouchableOpacity>
+              <Text style={[styles.topTitle, { color: colors.text }]}>Scan Product</Text>
+              <View style={{ width: 28 }} />
+            </View>
+          </SafeAreaView>
+
+          {/* Viewfinder frame */}
+          <View style={styles.viewfinder}>
+            <View style={[styles.frame, { borderColor: colors.accent }]}>
+              <Text style={[styles.frameText, { color: '#FFFFFF' }]}>
+                Point at product
+              </Text>
+            </View>
+          </View>
+
+          {/* Bottom controls */}
+          <View style={styles.bottomControls}>
+            <TouchableOpacity
+              onPress={handleTypeInstead}
+              style={styles.skipBtn}
+            >
+              <Text style={[styles.skipText, { color: colors.textSecondary }]}>Type instead</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleCapture}
+              disabled={capturing}
+              style={[styles.captureBtn, { backgroundColor: colors.accent }]}
+            >
+              <View style={styles.captureInner} />
+            </TouchableOpacity>
+            <View style={{ width: 80 }} />
+          </View>
+        </View>
+      </Camera>
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
-    container: { flex: 1 },
-    message: { textAlign: 'center', marginBottom: 20, fontSize: 16 },
-    btn: { padding: 16, borderRadius: 12, alignItems: 'center' },
-    camera: { flex: 1 },
-    header: {
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-    },
-    headerTitle: { fontSize: 18, fontWeight: '700', color: '#FFFFFF' },
-    iconBtn: {
-        width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)',
-        justifyContent: 'center', alignItems: 'center',
-    },
-    iconText: { fontSize: 20, color: '#FFFFFF' },
-    viewfinderContainer: {
-        flex: 1, justifyContent: 'center', alignItems: 'center',
-    },
-    viewfinderFrame: {
-        width: '80%', height: '60%',
-        position: 'relative',
-    },
-    corner: {
-        position: 'absolute', width: 40, height: 40,
-        borderColor: '#3C3CF6',
-    },
-    topLeft: { top: 0, left: 0, borderTopWidth: 4, borderLeftWidth: 4, borderTopLeftRadius: 16 },
-    topRight: { top: 0, right: 0, borderTopWidth: 4, borderRightWidth: 4, borderTopRightRadius: 16 },
-    bottomLeft: { bottom: 0, left: 0, borderBottomWidth: 4, borderLeftWidth: 4, borderBottomLeftRadius: 16 },
-    bottomRight: { bottom: 0, right: 0, borderBottomWidth: 4, borderRightWidth: 4, borderBottomRightRadius: 16 },
-    instructionText: {
-        color: '#FFFFFF', fontSize: 14, fontWeight: '600',
-        marginTop: 32, backgroundColor: 'rgba(0,0,0,0.6)',
-        paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, overflow: 'hidden',
-    },
-    processingOverlay: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(10, 14, 39, 0.85)',
-        justifyContent: 'center', alignItems: 'center',
-    },
-    processingText: {
-        color: '#FFFFFF', fontSize: 16, fontWeight: '600', marginTop: 16,
-    },
-    bottomControls: {
-        flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center',
-        paddingBottom: 40, paddingTop: 20,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-    },
-    secondaryBtn: {
-        width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.2)',
-        justifyContent: 'center', alignItems: 'center',
-    },
-    secondaryBtnIcon: { fontSize: 24 },
-    captureBtnWrapper: {
-        width: 80, height: 80, borderRadius: 40,
-        borderWidth: 4, borderColor: '#FFFFFF',
-        justifyContent: 'center', alignItems: 'center',
-    },
-    captureBtnInner: {
-        width: 64, height: 64, borderRadius: 32, backgroundColor: '#FFFFFF',
-    },
+  container: { flex: 1 },
+  safe: { flex: 1 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xxl },
+  permissionText: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, marginTop: spacing.lg },
+  permissionSub: { fontSize: fontSize.md, textAlign: 'center', marginTop: spacing.sm },
+  overlay: { flex: 1, justifyContent: 'space-between' },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
+    marginHorizontal: spacing.lg,
+  },
+  topTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold },
+  viewfinder: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  frame: {
+    width: 250,
+    height: 250,
+    borderWidth: 2,
+    borderRadius: borderRadius.xl,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.1)',
+  },
+  frameText: { fontSize: fontSize.md, opacity: 0.8 },
+  bottomControls: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingBottom: 40,
+    paddingHorizontal: spacing.xxl,
+  },
+  captureBtn: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
+  },
+  captureInner: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FFFFFF',
+  },
+  skipBtn: { width: 80, alignItems: 'center' },
+  skipText: { fontSize: fontSize.sm },
 });

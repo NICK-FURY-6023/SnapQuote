@@ -1,294 +1,237 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useTheme } from '../theme/ThemeContext';
-import { GlassCard } from '../components/GlassCard';
-import { useQuotationStore } from '../stores/quotationStore';
-import { useSettingsStore } from '../stores/settingsStore';
-import { generatePdf, sharePdf } from '../services/pdfService';
-import { generateExcel, shareExcel } from '../services/excelService';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Share } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Icon from 'react-native-vector-icons/Ionicons';
+import LinearGradient from 'react-native-linear-gradient';
+import RNPrint from 'react-native-print';
+import GlassContainer from '../components/GlassContainer';
+import GlassCard from '../components/GlassCard';
+import GlassButton from '../components/GlassButton';
+import GlassChip from '../components/GlassChip';
+import { useTheme } from '../theme/ThemeProvider';
+import { useQuotationStore } from '../stores/quotationStore';
+import { spacing, fontSize, fontWeight, borderRadius } from '../theme/tokens';
 
-export const PreviewScreen: React.FC = () => {
-    const { colors, mode } = useTheme();
-    const navigation = useNavigation<any>();
-    const { currentQuotation, currentItems } = useQuotationStore();
-    const { settings } = useSettingsStore();
-    const [loading, setLoading] = useState<string | null>(null);
+export default function PreviewScreen() {
+  const { colors } = useTheme();
+  const navigation = useNavigation();
+  const { currentQuotation: quote, currentItems: items } = useQuotationStore();
+  const [exporting, setExporting] = useState<'pdf' | 'excel' | null>(null);
 
-    if (!currentQuotation || !settings) return null;
-
-    const q = currentQuotation;
-    const currency = settings.currency || '₹';
-    const discountedAmount = q.subtotal - q.discount_amount;
-
-    const handleAction = async (action: string) => {
-        try {
-            setLoading(action);
-            if (action === 'downloadPdf') {
-                await generatePdf(q, currentItems, settings);
-                Alert.alert('✅ Success', 'PDF saved to your device!');
-            } else if (action === 'sharePdf') {
-                const uri = await generatePdf(q, currentItems, settings);
-                await sharePdf(uri);
-            } else if (action === 'downloadExcel') {
-                await generateExcel(q, currentItems, settings);
-                Alert.alert('✅ Success', 'Excel file saved to your device!');
-            } else if (action === 'shareExcel') {
-                const uri = await generateExcel(q, currentItems, settings);
-                await shareExcel(uri);
-            }
-        } catch (err) {
-            Alert.alert('Error', `Failed to ${action}`);
-        } finally {
-            setLoading(null);
-        }
-    };
-
+  if (!quote) {
     return (
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
-            {/* Header */}
-            <View style={[styles.header, { borderBottomColor: colors.border }]}>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <Text style={[styles.backBtn, { color: colors.accent }]}>← Back</Text>
-                </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>Quotation Preview</Text>
-                <TouchableOpacity onPress={() => navigation.navigate('QuotationEditor')} style={{ width: 48, alignItems: 'flex-end' }}>
-                    <Text style={{ fontSize: 20 }}>✏️</Text>
-                </TouchableOpacity>
-            </View>
-
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                {/* Invoice Card */}
-                <GlassCard style={styles.invoiceCard}>
-                    {/* Company Header */}
-                    <View style={styles.companyHeader}>
-                        <LinearGradient
-                            colors={[colors.gradientStart, colors.gradientEnd]}
-                            style={styles.companyLogo}
-                        >
-                            <Text style={styles.companyLogoText}>
-                                {(settings.company_name || 'SQ').substring(0, 2).toUpperCase()}
-                            </Text>
-                        </LinearGradient>
-                        <View style={styles.companyInfo}>
-                            <Text style={[styles.companyName, { color: colors.text }]}>
-                                {settings.company_name || 'SnapQuote'}
-                            </Text>
-                            {settings.company_phone ? (
-                                <Text style={[styles.companyDetail, { color: colors.textSecondary }]}>{settings.company_phone}</Text>
-                            ) : null}
-                            {settings.company_address ? (
-                                <Text style={[styles.companyDetail, { color: colors.textSecondary }]}>{settings.company_address}</Text>
-                            ) : null}
-                        </View>
-                    </View>
-
-                    {/* Quote Info */}
-                    <View style={[styles.quoteInfoRow, { backgroundColor: colors.accentLight, borderColor: colors.border }]}>
-                        <View>
-                            <Text style={[styles.quoteInfoLabel, { color: colors.textSecondary }]}>QUOTATION</Text>
-                            <Text style={[styles.quoteInfoValue, { color: colors.accent }]}>{q.quote_number}</Text>
-                        </View>
-                        <View style={{ alignItems: 'flex-end' }}>
-                            <Text style={[styles.quoteInfoLabel, { color: colors.textSecondary }]}>DATE</Text>
-                            <Text style={[styles.quoteInfoValue, { color: colors.text }]}>{q.quote_date}</Text>
-                        </View>
-                    </View>
-
-                    {/* Customer */}
-                    <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>BILL TO</Text>
-                    <Text style={[styles.customerName, { color: colors.text }]}>{q.customer_name || 'Customer'}</Text>
-                    {q.phone ? <Text style={[styles.customerDetail, { color: colors.textSecondary }]}>📱 {q.phone}</Text> : null}
-                    {q.address ? <Text style={[styles.customerDetail, { color: colors.textSecondary }]}>📍 {q.address}</Text> : null}
-
-                    <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-                    {/* Items Table */}
-                    <View style={[styles.tableHeader, { borderBottomColor: colors.border }]}>
-                        <Text style={[styles.th, { color: colors.textSecondary, width: 30 }]}>#</Text>
-                        <Text style={[styles.th, { color: colors.textSecondary, flex: 1 }]}>ITEM</Text>
-                        <Text style={[styles.th, { color: colors.textSecondary, width: 55, textAlign: 'center' }]}>QTY</Text>
-                        <Text style={[styles.th, { color: colors.textSecondary, width: 65, textAlign: 'right' }]}>RATE</Text>
-                        <Text style={[styles.th, { color: colors.textSecondary, width: 80, textAlign: 'right' }]}>TOTAL</Text>
-                    </View>
-
-                    {currentItems.map((item, i) => (
-                        <View
-                            key={item.id}
-                            style={[
-                                styles.tableRow,
-                                { borderBottomColor: colors.border },
-                                i % 2 === 1 && { backgroundColor: mode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)' },
-                            ]}
-                        >
-                            <Text style={[styles.td, { color: colors.textSecondary, width: 30 }]}>{i + 1}</Text>
-                            <Text style={[styles.td, { color: colors.text, flex: 1 }]}>{item.item_name}</Text>
-                            <Text style={[styles.td, { color: colors.text, width: 55, textAlign: 'center' }]}>
-                                {item.quantity} {item.unit}
-                            </Text>
-                            <Text style={[styles.td, { color: colors.text, width: 65, textAlign: 'right' }]}>
-                                {currency}{Number(item.rate).toFixed(0)}
-                            </Text>
-                            <Text style={[styles.td, { color: colors.text, width: 80, textAlign: 'right', fontWeight: '600' }]}>
-                                {currency}{Number(item.total).toFixed(0)}
-                            </Text>
-                        </View>
-                    ))}
-
-                    <View style={[styles.divider, { backgroundColor: colors.border, marginTop: 16 }]} />
-
-                    {/* Summary */}
-                    <View style={styles.summarySection}>
-                        <View style={styles.summaryRow}>
-                            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Items Total</Text>
-                            <Text style={[styles.summaryValue, { color: colors.text }]}>{currency}{q.subtotal.toFixed(2)}</Text>
-                        </View>
-                        {q.discount_percent > 0 && (
-                            <>
-                                <View style={styles.summaryRow}>
-                                    <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Discount ({q.discount_percent}%)</Text>
-                                    <Text style={[styles.summaryValue, { color: colors.error }]}>-{currency}{q.discount_amount.toFixed(2)}</Text>
-                                </View>
-                                <View style={styles.summaryRow}>
-                                    <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Discounted Amount</Text>
-                                    <Text style={[styles.summaryValue, { color: colors.text }]}>{currency}{discountedAmount.toFixed(2)}</Text>
-                                </View>
-                            </>
-                        )}
-                        {q.extra_charge > 0 && (
-                            <View style={styles.summaryRow}>
-                                <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Extra Charge</Text>
-                                <Text style={[styles.summaryValue, { color: colors.success }]}>+{currency}{q.extra_charge.toFixed(2)}</Text>
-                            </View>
-                        )}
-
-                        {/* Final Payable */}
-                        <LinearGradient
-                            colors={[colors.gradientStart, colors.gradientEnd]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.finalGradientLine}
-                        />
-                        <View style={styles.finalRow}>
-                            <Text style={[styles.finalLabel, { color: colors.accent }]}>FINAL PAYABLE</Text>
-                            <Text style={[styles.finalValue, { color: colors.accent }]}>{currency}{q.final_total.toFixed(2)}</Text>
-                        </View>
-                    </View>
-                </GlassCard>
-
-                {/* Export Buttons */}
-                <Text style={[styles.exportTitle, { color: colors.text }]}>Export & Share</Text>
-                <View style={styles.exportGrid}>
-                    <TouchableOpacity
-                        style={[styles.exportBtn, { backgroundColor: colors.accent }]}
-                        onPress={() => handleAction('downloadPdf')}
-                        activeOpacity={0.85}
-                        disabled={loading !== null}
-                    >
-                        <Text style={styles.exportIcon}>📄</Text>
-                        <Text style={styles.exportBtnText}>{loading === 'downloadPdf' ? 'Saving...' : 'Download PDF'}</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.exportBtn, { backgroundColor: colors.success }]}
-                        onPress={() => handleAction('downloadExcel')}
-                        activeOpacity={0.85}
-                        disabled={loading !== null}
-                    >
-                        <Text style={styles.exportIcon}>📊</Text>
-                        <Text style={styles.exportBtnText}>{loading === 'downloadExcel' ? 'Saving...' : 'Download Excel'}</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.exportBtn, { backgroundColor: mode === 'dark' ? 'rgba(255,255,255,0.08)' : '#F0F4FF', borderColor: colors.border, borderWidth: 1 }]}
-                        onPress={() => handleAction('sharePdf')}
-                        activeOpacity={0.85}
-                        disabled={loading !== null}
-                    >
-                        <Text style={styles.exportIcon}>📤</Text>
-                        <Text style={[styles.exportBtnText, { color: colors.text }]}>{loading === 'sharePdf' ? 'Sharing...' : 'Share PDF'}</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.exportBtn, { backgroundColor: mode === 'dark' ? 'rgba(255,255,255,0.08)' : '#F0FFF4', borderColor: colors.border, borderWidth: 1 }]}
-                        onPress={() => handleAction('shareExcel')}
-                        activeOpacity={0.85}
-                        disabled={loading !== null}
-                    >
-                        <Text style={styles.exportIcon}>📤</Text>
-                        <Text style={[styles.exportBtnText, { color: colors.text }]}>{loading === 'shareExcel' ? 'Sharing...' : 'Share Excel'}</Text>
-                    </TouchableOpacity>
-                </View>
-            </ScrollView>
-        </View>
+      <GlassContainer>
+        <SafeAreaView style={styles.safe}>
+          <View style={styles.empty}>
+            <Text style={[{ color: colors.textSecondary, fontSize: fontSize.lg }]}>No quotation to preview</Text>
+            <GlassButton title="Go Back" onPress={() => navigation.goBack()} style={{ marginTop: spacing.lg }} />
+          </View>
+        </SafeAreaView>
+      </GlassContainer>
     );
-};
+  }
+
+  const generateHtml = () => {
+    const itemsRows = items.map((item, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${item.item_name || '-'}</td>
+        <td>${item.quantity} ${item.unit}</td>
+        <td>${quote.currency_symbol}${item.rate.toFixed(2)}</td>
+        <td>${quote.currency_symbol}${item.total.toFixed(2)}</td>
+      </tr>
+    `).join('');
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: #f5f5fa; padding: 20px; color: #1a1a2e; }
+          .header { text-align: center; padding: 20px; background: linear-gradient(135deg, #4F46E5, #7C3AED); border-radius: 16px; color: white; margin-bottom: 20px; }
+          .header h1 { font-size: 24px; } .header p { opacity: 0.9; margin-top: 4px; }
+          .section { background: white; border-radius: 16px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+          .section h3 { color: #6B7280; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+          .info-row { display: flex; justify-content: space-between; padding: 4px 0; }
+          table { width: 100%; border-collapse: collapse; }
+          th { background: #1a1a2e; color: white; padding: 10px 12px; text-align: left; font-size: 13px; }
+          td { padding: 10px 12px; border-bottom: 1px solid #eee; font-size: 13px; }
+          .summary { margin-top: 16px; }
+          .summary-row { display: flex; justify-content: space-between; padding: 6px 0; }
+          .total { border-top: 2px solid #4F46E5; margin-top: 8px; padding-top: 12px; display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; color: #4F46E5; }
+          .footer { text-align: center; color: #9CA3AF; font-size: 11px; margin-top: 30px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>QUOTATION</h1>
+          <p>${quote.quote_number || 'Draft'}</p>
+        </div>
+        <div class="section">
+          <h3>Customer Details</h3>
+          <div class="info-row"><strong>Name:</strong> ${quote.customer_name || '-'}</div>
+          <div class="info-row"><strong>Phone:</strong> ${quote.phone || '-'}</div>
+          <div class="info-row"><strong>Address:</strong> ${quote.address || '-'}</div>
+          <div class="info-row"><strong>Date:</strong> ${quote.quote_date || '-'}</div>
+        </div>
+        <div class="section">
+          <h3>Items</h3>
+          <table>
+            <thead><tr><th>#</th><th>Item</th><th>Qty</th><th>Rate</th><th>Total</th></tr></thead>
+            <tbody>${itemsRows}</tbody>
+          </table>
+          <div class="summary">
+            <div class="summary-row"><span>Subtotal</span><span>${quote.subtotal.toFixed(2)}</span></div>
+            ${quote.discount_amount > 0 ? `<div class="summary-row"><span>Discount (${quote.discount_percent}%)</span><span>-${quote.discount_amount.toFixed(2)}</span></div>` : ''}
+            ${quote.tax_amount > 0 ? `<div class="summary-row"><span>${quote.tax_type.toUpperCase()} (${quote.tax_percent}%)</span><span>${quote.tax_amount.toFixed(2)}</span></div>` : ''}
+            <div class="total"><span>FINAL PAYABLE</span><span>${quote.currency_symbol}${quote.final_total.toFixed(2)}</span></div>
+          </div>
+        </div>
+        <div class="footer">Generated by SnapQuote v2</div>
+      </body>
+      </html>
+    `;
+  };
+
+  const handleExportPDF = async () => {
+    setExporting('pdf');
+    try {
+      const html = generateHtml();
+      await RNPrint.print({ html });
+    } catch (err) {
+      console.warn('PDF export failed:', err);
+    }
+    setExporting(null);
+  };
+
+  return (
+    <GlassContainer>
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Icon name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Preview</Text>
+          <GlassChip label={quote.sync_status} variant={quote.sync_status === 'synced' ? 'success' : 'warning'} />
+        </View>
+
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {/* Company Header */}
+          <LinearGradient
+            colors={[colors.gradientStart, colors.gradientMid, colors.gradientEnd]}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+            style={[styles.quoteHeader, { borderRadius: borderRadius.xl }]}
+          >
+            <Text style={styles.quoteTitle}>QUOTATION</Text>
+            <Text style={styles.quoteNum}>{quote.quote_number || 'Draft'}</Text>
+          </LinearGradient>
+
+          {/* Customer */}
+          <GlassCard style={styles.section}>
+            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>CUSTOMER DETAILS</Text>
+            <View style={styles.infoRow}><Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Name:</Text><Text style={[styles.infoValue, { color: colors.text }]}>{quote.customer_name || '-'}</Text></View>
+            <View style={styles.infoRow}><Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Phone:</Text><Text style={[styles.infoValue, { color: colors.text }]}>{quote.phone || '-'}</Text></View>
+            <View style={styles.infoRow}><Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Address:</Text><Text style={[styles.infoValue, { color: colors.text }]}>{quote.address || '-'}</Text></View>
+            <View style={styles.infoRow}><Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Date:</Text><Text style={[styles.infoValue, { color: colors.text }]}>{quote.quote_date || '-'}</Text></View>
+          </GlassCard>
+
+          {/* Items */}
+          <GlassCard style={styles.section}>
+            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>ITEMS</Text>
+            {items.map((item, i) => (
+              <View key={item.id} style={[styles.previewItem, i < items.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+                <View style={styles.previewItemHeader}>
+                  <Text style={[styles.previewItemName, { color: colors.text }]}>{item.item_name || '-'}</Text>
+                  <Text style={[styles.previewItemTotal, { color: colors.text }]}>{quote.currency_symbol}{item.total.toFixed(2)}</Text>
+                </View>
+                <Text style={[styles.previewItemDetail, { color: colors.textSecondary }]}>
+                  {item.quantity} {item.unit} × {quote.currency_symbol}{item.rate.toFixed(2)}
+                </Text>
+              </View>
+            ))}
+          </GlassCard>
+
+          {/* Summary */}
+          <GlassCard style={styles.section}>
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Subtotal</Text>
+              <Text style={[styles.summaryValue, { color: colors.text }]}>{quote.currency_symbol}{quote.subtotal.toFixed(2)}</Text>
+            </View>
+            {quote.discount_amount > 0 && (
+              <View style={styles.summaryRow}>
+                <Text style={[styles.summaryLabel, { color: colors.warning }]}>Discount ({quote.discount_percent}%)</Text>
+                <Text style={[styles.summaryValue, { color: colors.warning }]}>-{quote.currency_symbol}{quote.discount_amount.toFixed(2)}</Text>
+              </View>
+            )}
+            {quote.extra_charge > 0 && (
+              <View style={styles.summaryRow}>
+                <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Extra Charge</Text>
+                <Text style={[styles.summaryValue, { color: colors.text }]}>{quote.currency_symbol}{quote.extra_charge.toFixed(2)}</Text>
+              </View>
+            )}
+            {quote.tax_amount > 0 && (
+              <View style={styles.summaryRow}>
+                <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>{quote.tax_type.toUpperCase()} ({quote.tax_percent}%)</Text>
+                <Text style={[styles.summaryValue, { color: colors.text }]}>{quote.currency_symbol}{quote.tax_amount.toFixed(2)}</Text>
+              </View>
+            )}
+            <LinearGradient
+              colors={[colors.gradientStart, colors.gradientEnd]}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              style={{ height: 2, marginVertical: spacing.md, borderRadius: 1 }}
+            />
+            <View style={styles.finalRow}>
+              <Text style={[styles.finalLabel, { color: colors.accent }]}>FINAL PAYABLE</Text>
+              <Text style={[styles.finalValue, { color: colors.accent }]}>{quote.currency_symbol}{quote.final_total.toFixed(2)}</Text>
+            </View>
+          </GlassCard>
+
+          {/* Export buttons */}
+          <View style={styles.exportSection}>
+            <GlassButton
+              title="Download PDF"
+              onPress={handleExportPDF}
+              loading={exporting === 'pdf'}
+              icon={<Icon name="document-text" size={18} color="#fff" />}
+              style={{ flex: 1 }}
+            />
+          </View>
+
+          <View style={{ height: 100 }} />
+        </ScrollView>
+      </SafeAreaView>
+    </GlassContainer>
+  );
+}
 
 const styles = StyleSheet.create({
-    container: { flex: 1 },
-    header: {
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16, height: 100,
-        borderBottomWidth: 0.5,
-    },
-    backBtn: { fontSize: 16, fontWeight: '600' },
-    headerTitle: { fontSize: 18, fontWeight: '700' },
-    scrollContent: { paddingHorizontal: 20, paddingBottom: 120 },
-    invoiceCard: { marginTop: 16 },
-    companyHeader: {
-        flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12,
-    },
-    companyLogo: {
-        width: 48, height: 48, borderRadius: 14,
-        justifyContent: 'center', alignItems: 'center',
-    },
-    companyLogoText: { fontSize: 18, fontWeight: '800', color: '#FFFFFF' },
-    companyInfo: { flex: 1 },
-    companyName: { fontSize: 18, fontWeight: '700' },
-    companyDetail: { fontSize: 12, marginTop: 1 },
-    quoteInfoRow: {
-        flexDirection: 'row', justifyContent: 'space-between',
-        paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12,
-        marginBottom: 16,
-    },
-    quoteInfoLabel: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
-    quoteInfoValue: { fontSize: 15, fontWeight: '700', marginTop: 2 },
-    sectionLabel: {
-        fontSize: 11, fontWeight: '700', textTransform: 'uppercase',
-        letterSpacing: 1, marginBottom: 6,
-    },
-    customerName: { fontSize: 18, fontWeight: '600' },
-    customerDetail: { fontSize: 13, marginTop: 3 },
-    divider: { height: 1, marginVertical: 16 },
-    tableHeader: {
-        flexDirection: 'row', paddingVertical: 10, borderBottomWidth: 1,
-    },
-    th: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
-    tableRow: {
-        flexDirection: 'row', paddingVertical: 10, borderBottomWidth: 0.5, alignItems: 'center',
-    },
-    td: { fontSize: 13 },
-    summarySection: { marginTop: 8 },
-    summaryRow: {
-        flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6,
-    },
-    summaryLabel: { fontSize: 14 },
-    summaryValue: { fontSize: 15, fontWeight: '600' },
-    finalGradientLine: { height: 2, borderRadius: 1, marginTop: 12 },
-    finalRow: {
-        flexDirection: 'row', justifyContent: 'space-between', paddingTop: 12,
-    },
-    finalLabel: { fontSize: 18, fontWeight: '800' },
-    finalValue: { fontSize: 20, fontWeight: '800' },
-    exportTitle: { fontSize: 18, fontWeight: '700', marginTop: 24, marginBottom: 12 },
-    exportGrid: {
-        flexDirection: 'row', flexWrap: 'wrap', gap: 10,
-    },
-    exportBtn: {
-        width: '48%', flexGrow: 1, height: 52, borderRadius: 16,
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    },
-    exportIcon: { fontSize: 18 },
-    exportBtnText: { fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
+  safe: { flex: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderBottomWidth: 1 },
+  headerTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold },
+  scrollContent: { padding: spacing.lg },
+  quoteHeader: { padding: spacing.xxl, alignItems: 'center', marginBottom: spacing.lg },
+  quoteTitle: { color: '#FFFFFF', fontSize: fontSize.xxl, fontWeight: fontWeight.bold, letterSpacing: 2 },
+  quoteNum: { color: 'rgba(255,255,255,0.8)', fontSize: fontSize.sm, marginTop: spacing.xs },
+  section: { marginBottom: spacing.md },
+  sectionLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, letterSpacing: 1, marginBottom: spacing.md },
+  infoRow: { flexDirection: 'row', paddingVertical: 2 },
+  infoLabel: { fontSize: fontSize.sm, width: 60 },
+  infoValue: { fontSize: fontSize.sm, flex: 1 },
+  previewItem: { paddingVertical: spacing.sm },
+  previewItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  previewItemName: { fontSize: fontSize.md, fontWeight: fontWeight.medium, flex: 1 },
+  previewItemTotal: { fontSize: fontSize.md, fontWeight: fontWeight.bold },
+  previewItemDetail: { fontSize: fontSize.sm, marginTop: 2 },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.xs },
+  summaryLabel: { fontSize: fontSize.md },
+  summaryValue: { fontSize: fontSize.md, fontWeight: fontWeight.medium },
+  finalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  finalLabel: { fontSize: fontSize.lg, fontWeight: fontWeight.bold },
+  finalValue: { fontSize: fontSize.xl, fontWeight: fontWeight.bold },
+  exportSection: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg },
+  empty: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 });

@@ -1,145 +1,221 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
-import { useTheme } from '../theme/ThemeContext';
-import { useNavigation } from '@react-navigation/native';
-import { GlassCard } from '../components/GlassCard';
-import { GlassButton } from '../components/GlassButton';
+import React, { useEffect, useState } from 'react';
+import {
+  View, Text, TextInput, ScrollView, StyleSheet, TouchableOpacity, Alert,
+} from 'react-native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Icon from 'react-native-vector-icons/Ionicons';
+import GlassContainer from '../components/GlassContainer';
+import GlassCard from '../components/GlassCard';
+import GlassButton from '../components/GlassButton';
+import { useTheme } from '../theme/ThemeProvider';
 import { useQuotationStore } from '../stores/quotationStore';
+import { spacing, fontSize, fontWeight, borderRadius } from '../theme/tokens';
+import { RootStackParamList } from '../navigation/navigationRef';
 
-export const TextInputScreen: React.FC = () => {
-    const { colors } = useTheme();
-    const navigation = useNavigation<any>();
-    const { createNewQuotation, updateItem } = useQuotationStore();
-    const [text, setText] = useState('');
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type TextInputRouteProp = RouteProp<RootStackParamList, 'TextInput'>;
 
-    const handleGenerate = () => {
-        if (!text.trim()) {
-            Alert.alert('Error', 'Please enter some items.');
-            return;
-        }
+/**
+ * Smart parser for text input.
+ * Formats supported:
+ *   - "ItemName Qty Rate" (space-separated)
+ *   - "ItemName - Qty x Rate"
+ *   - "1. ItemName ..." (numbered lines)
+ *   - "ItemName @ Rate x Qty"
+ */
+function parseLine(line: string): { name: string; qty: number; rate: number } | null {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
 
-        // Extremely basic parsing logic for demonstration.
-        // Format expected: "ItemName Qty Price" per line
-        const lines = text.split('\n').filter(l => l.trim().length > 0);
+  // Remove leading numbering: "1. " or "1) "
+  let text = trimmed.replace(/^\d+[\.\)]\s*/, '');
 
-        createNewQuotation(); // start fresh quote
+  // Pattern 1: "Item @ Rate x Qty"
+  const atMatch = text.match(/^(.+?)\s+@\s*(\d+[\.\d]*)\s*x\s*(\d+[\.\d]*)$/i);
+  if (atMatch) {
+    return { name: atMatch[1].trim(), rate: parseFloat(atMatch[2]), qty: parseFloat(atMatch[3]) };
+  }
 
-        lines.forEach((line, index) => {
-            // Very fuzzy matching: look for numbers
-            const parts = line.trim().split(/\s+/);
-            let name = parts[0] || 'Unknown Item';
-            let qty = 1;
-            let price = 0;
+  // Pattern 2: "Item - Qty x Rate" or "Item Qty x Rate"
+  const xMatch = text.match(/^(.+?)\s*-?\s*(\d+[\.\d]*)\s*x\s*(\d+[\.\d]*)$/i);
+  if (xMatch) {
+    return { name: xMatch[1].trim(), qty: parseFloat(xMatch[2]), rate: parseFloat(xMatch[3]) };
+  }
 
-            // Try to figure out name (everything up to first number)
-            const firstNumIdx = parts.findIndex(p => !isNaN(Number(p)));
-            if (firstNumIdx > 0) {
-                name = parts.slice(0, firstNumIdx).join(' ');
-                qty = Number(parts[firstNumIdx]) || 1;
-                price = Number(parts[firstNumIdx + 1]) || 0;
-            } else if (firstNumIdx === 0) {
-                name = 'Item ' + (index + 1);
-                qty = Number(parts[0]);
-                price = Number(parts[1]) || 0;
-            }
+  // Pattern 3: "ItemName Qty Rate" (last two tokens are numbers)
+  const tokens = text.split(/\s+/);
+  if (tokens.length >= 3) {
+    const rate = parseFloat(tokens[tokens.length - 1]);
+    const qty = parseFloat(tokens[tokens.length - 2]);
+    if (!isNaN(qty) && !isNaN(rate) && tokens.length > 2) {
+      const name = tokens.slice(0, tokens.length - 2).join(' ');
+      return { name, qty, rate };
+    }
+  }
 
-            // Ensure empty slots exist
-            while (useQuotationStore.getState().currentItems.length <= index) {
-                useQuotationStore.getState().addItem();
-            }
+  // Pattern 4: Just item name and rate (qty=1)
+  if (tokens.length === 2) {
+    const rate = parseFloat(tokens[1]);
+    if (!isNaN(rate)) {
+      return { name: tokens[0], qty: 1, rate };
+    }
+  }
 
-            updateItem(index, 'item_name', name);
-            updateItem(index, 'quantity', qty);
-            updateItem(index, 'rate', price);
-        });
+  // Return as name only, qty=1 rate=0
+  return { name: text, qty: 1, rate: 0 };
+}
 
-        navigation.navigate('QuotationEditor', { isNew: false });
-    };
+export default function TextInputScreen() {
+  const { colors } = useTheme();
+  const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<TextInputRouteProp>();
+  const photoUri = route.params?.photoUri;
+  const { createNewQuotation, addItem, updateItem, currentItems: items } = useQuotationStore();
+  const [rawText, setRawText] = useState('');
+  const [parsed, setParsed] = useState<{ name: string; qty: number; rate: number }[]>([]);
 
-    return (
-        <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={[styles.container, { backgroundColor: colors.background }]}
-        >
-            {/* Header */}
-            <View style={[styles.header, { borderBottomColor: colors.border }]}>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <Text style={[styles.backBtn, { color: colors.accent }]}>← Back</Text>
-                </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>Quick Text Input</Text>
-                <View style={{ width: 48 }} />
-            </View>
+  useEffect(() => {
+    createNewQuotation();
+  }, []);
 
-            <View style={styles.content}>
-                <Text style={[styles.instruction, { color: colors.textSecondary }]}>
-                    Paste or type your items here. We'll automatically convert them into a quotation table.
-                </Text>
-                <Text style={[styles.formatHint, { color: colors.accent }]}>
-                    Format: Item Name • Quantity • Price
-                </Text>
+  const handleParse = () => {
+    const lines = rawText.split('\n').filter((l) => l.trim());
+    const results = lines
+      .map(parseLine)
+      .filter((r): r is NonNullable<typeof r> => r !== null);
 
-                <GlassCard style={styles.inputCard}>
-                    <TextInput
-                        value={text}
-                        onChangeText={setText}
-                        multiline
-                        autoFocus
-                        placeholder={'E.g.\nCement Bag 5 350\nSteel Rods 10 1200\nLabor Charge 1 500'}
-                        placeholderTextColor={colors.textSecondary}
-                        style={[styles.input, { color: colors.text }]}
-                        textAlignVertical="top"
-                    />
-                </GlassCard>
+    setParsed(results);
+  };
 
-                <GlassButton
-                    title="✨ Generate Table"
-                    onPress={() => {
-                        Keyboard.dismiss();
-                        handleGenerate();
-                    }}
-                    variant="primary"
-                    style={styles.generateBtn}
-                />
-            </View>
-        </KeyboardAvoidingView>
-    );
-};
+  const handleApply = async () => {
+    for (let i = 0; i < parsed.length; i++) {
+      const p = parsed[i];
+      if (i < items.length) {
+        updateItem(i, 'item_name', p.name);
+        updateItem(i, 'quantity', p.qty);
+        updateItem(i, 'rate', p.rate);
+        updateItem(i, 'unit', 'Pc');
+      } else {
+        addItem();
+        setTimeout(() => {
+          updateItem(i, 'item_name', p.name);
+          updateItem(i, 'quantity', p.qty);
+          updateItem(i, 'rate', p.rate);
+          updateItem(i, 'unit', 'Pc');
+        }, 0);
+      }
+    }
+
+    navigation.navigate('NewQuotation');
+  };
+
+  return (
+    <GlassContainer>
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Icon name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Quick Entry</Text>
+          <View style={{ width: 24 }} />
+        </View>
+
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <Text style={[styles.instructions, { color: colors.textSecondary }]}>
+            Enter items one per line. Format: "ItemName Qty Rate"{'\n'}
+            Examples:{'\n'}
+            "Cement Bag 50kg 2 350"{'\n'}
+            "Paint 5L 3 x 450"{'\n'}
+            "Screws @ 10 x 100"
+          </Text>
+
+          <GlassCard>
+            <TextInput
+              style={[
+                styles.textArea,
+                { color: colors.text, backgroundColor: colors.inputBg, borderColor: colors.glassBorder },
+              ]}
+              placeholder="Paste or type items here..."
+              placeholderTextColor={colors.textSecondary}
+              multiline
+              numberOfLines={8}
+              textAlignVertical="top"
+              value={rawText}
+              onChangeText={setRawText}
+            />
+            <GlassButton title="Parse Items" onPress={handleParse} style={{ marginTop: spacing.md }} />
+          </GlassCard>
+
+          {parsed.length > 0 && (
+            <>
+              <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>PARSED ITEMS</Text>
+              <GlassCard>
+                {parsed.map((p, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.parsedItem,
+                      i < parsed.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border },
+                    ]}
+                  >
+                    <Text style={[styles.parsedName, { color: colors.text }]}>{p.name}</Text>
+                    <Text style={[styles.parsedDetail, { color: colors.textSecondary }]}>
+                      Qty: {p.qty} × ₹{p.rate.toFixed(2)}
+                    </Text>
+                  </View>
+                ))}
+              </GlassCard>
+
+              <GlassButton
+                title="Apply & Edit"
+                onPress={handleApply}
+                size="lg"
+                style={{ marginTop: spacing.lg }}
+              />
+            </>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    </GlassContainer>
+  );
+}
 
 const styles = StyleSheet.create({
-    container: { flex: 1 },
-    header: {
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16, height: 100,
-        borderBottomWidth: 0.5,
-    },
-    backBtn: { fontSize: 16, fontWeight: '600' },
-    headerTitle: { fontSize: 18, fontWeight: '700' },
-    content: {
-        padding: 20,
-        flex: 1,
-    },
-    instruction: {
-        fontSize: 15,
-        lineHeight: 22,
-        marginBottom: 8,
-    },
-    formatHint: {
-        fontSize: 13,
-        fontWeight: '600',
-        marginBottom: 20,
-    },
-    inputCard: {
-        flex: 1,
-        padding: 0,
-        marginBottom: 24,
-    },
-    input: {
-        flex: 1,
-        padding: 20,
-        fontSize: 16,
-        lineHeight: 24,
-    },
-    generateBtn: {
-        marginBottom: 40,
-    },
+  safe: { flex: 1 },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderBottomWidth: 1,
+  },
+  headerTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold },
+  scrollContent: { padding: spacing.lg },
+  instructions: {
+    fontSize: fontSize.sm,
+    lineHeight: 20,
+    marginBottom: spacing.lg,
+    padding: spacing.md,
+  },
+  textArea: {
+    borderWidth: 1,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    fontSize: fontSize.md,
+    minHeight: 160,
+  },
+  sectionLabel: {
+    fontSize: fontSize.sm, fontWeight: fontWeight.semibold, letterSpacing: 1,
+    marginBottom: spacing.sm, marginTop: spacing.lg, marginLeft: spacing.xs,
+  },
+  parsedItem: {
+    paddingVertical: spacing.sm,
+  },
+  parsedName: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.medium,
+  },
+  parsedDetail: {
+    fontSize: fontSize.sm,
+    marginTop: 2,
+  },
 });

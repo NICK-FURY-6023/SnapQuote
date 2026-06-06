@@ -1,73 +1,114 @@
-import React from 'react';
-import { View, TextInput, Text, StyleSheet, ViewStyle, KeyboardTypeOptions } from 'react-native';
-import { useTheme } from '../theme/ThemeContext';
+import React, { useState } from 'react';
+import {
+  View,
+  TextInput,
+  Text,
+  StyleSheet,
+  ViewStyle,
+  TextInputProps,
+  TouchableOpacity,
+} from 'react-native';
+import { useTheme } from '../theme/ThemeProvider';
+import { borderRadius, spacing, fontSize, fontWeight } from '../theme/tokens';
 
-interface GlassInputProps {
-    label: string;
-    value: string;
-    onChangeText: (text: string) => void;
-    placeholder?: string;
-    keyboardType?: KeyboardTypeOptions;
-    multiline?: boolean;
-    numberOfLines?: number;
-    style?: ViewStyle;
-    secureTextEntry?: boolean;
-    editable?: boolean;
+interface GlassInputProps extends TextInputProps {
+  label?: string;
+  error?: string;
+  icon?: React.ReactNode;
+  rightAction?: React.ReactNode;
+  containerStyle?: ViewStyle;
+  required?: boolean;
 }
 
-export const GlassInput: React.FC<GlassInputProps> = ({
-    label, value, onChangeText, placeholder, keyboardType = 'default',
-    multiline = false, numberOfLines = 1, style, secureTextEntry = false, editable = true,
-}) => {
-    const { colors, mode } = useTheme();
+export default function GlassInput({
+  label,
+  error,
+  icon,
+  rightAction,
+  containerStyle,
+  required,
+  style,
+  ...inputProps
+}: GlassInputProps) {
+  const { colors } = useTheme();
+  const [focused, setFocused] = useState(false);
 
-    return (
-        <View style={[styles.container, style]}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>{label}</Text>
-            <TextInput
-                value={value}
-                onChangeText={onChangeText}
-                placeholder={placeholder}
-                placeholderTextColor={mode === 'dark' ? 'rgba(255,255,255,0.3)' : '#9CA3AF'}
-                keyboardType={keyboardType}
-                multiline={multiline}
-                numberOfLines={numberOfLines}
-                secureTextEntry={secureTextEntry}
-                editable={editable}
-                style={[
-                    styles.input,
-                    {
-                        backgroundColor: colors.inputBg,
-                        color: colors.text,
-                        borderColor: colors.border,
-                        ...(multiline ? { height: numberOfLines * 24 + 24, textAlignVertical: 'top' } : {}),
-                        ...(mode === 'light' ? {
-                            shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-                            shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
-                        } : {}),
-                    },
-                ]}
-            />
-        </View>
-    );
-};
+  return (
+    <View style={[styles.container, containerStyle]}>
+      {label && (
+        <Text style={[styles.label, { color: colors.textSecondary }]}>
+          {label}
+          {required && <Text style={{ color: colors.error }}> *</Text>}
+        </Text>
+      )}
+      <View
+        style={[
+          styles.inputWrapper,
+          {
+            backgroundColor: colors.inputBg,
+            borderColor: error ? colors.error : focused ? colors.accent : colors.glassBorder,
+            borderRadius: borderRadius.md,
+          },
+        ]}
+      >
+        {icon && <View style={styles.icon}>{icon}</View>}
+        <TextInput
+          placeholderTextColor={colors.textSecondary}
+          {...inputProps}
+          style={[
+            styles.input,
+            { color: colors.text },
+            icon && { paddingLeft: spacing.sm },
+            style as any,
+          ]}
+          onFocus={(e) => {
+            setFocused(true);
+            inputProps.onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setFocused(false);
+            inputProps.onBlur?.(e);
+          }}
+        />
+        {rightAction && <View style={styles.rightAction}>{rightAction}</View>}
+      </View>
+      {error && (
+        <Text style={[styles.error, { color: colors.error }]}>{error}</Text>
+      )}
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
-    container: {
-        marginBottom: 16,
-    },
-    label: {
-        fontSize: 13,
-        fontWeight: '500',
-        marginBottom: 6,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    input: {
-        height: 52,
-        borderRadius: 16,
-        borderWidth: 1,
-        paddingHorizontal: 16,
-        fontSize: 16,
-    },
+  container: {
+    marginBottom: spacing.md,
+  },
+  label: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
+    marginBottom: spacing.xs,
+    marginLeft: spacing.xs,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    paddingHorizontal: spacing.md,
+  },
+  icon: {
+    marginRight: spacing.xs,
+  },
+  rightAction: {
+    marginLeft: spacing.xs,
+  },
+  input: {
+    flex: 1,
+    paddingVertical: spacing.md,
+    fontSize: fontSize.md,
+  },
+  error: {
+    fontSize: fontSize.xs,
+    marginTop: spacing.xs,
+    marginLeft: spacing.xs,
+  },
 });

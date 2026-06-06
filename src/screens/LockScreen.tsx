@@ -1,240 +1,152 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Animated } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useTheme } from '../theme/ThemeContext';
+import React, { useState, useRef } from 'react';
+import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
+import GlassInput from '../components/GlassInput';
+import GlassButton from '../components/GlassButton';
+import GlassContainer from '../components/GlassContainer';
+import { useTheme } from '../theme/ThemeProvider';
 import { useAuthStore } from '../stores/authStore';
+import { spacing, fontSize, fontWeight } from '../theme/tokens';
 
-export const LockScreen: React.FC = () => {
-    const { colors, mode } = useTheme();
-    const [password, setPassword] = useState('');
-    const { checkPassword, error, initPassword } = useAuthStore();
-    const shakeAnim = useState(new Animated.Value(0))[0];
+const { width } = Dimensions.get('window');
 
-    useEffect(() => {
-        initPassword();
-    }, []);
+export default function LockScreen() {
+  const { colors } = useTheme();
+  const { unlockWithPasscode, unlockWithBiometric, isBiometricAvailable, biometricEnabled, error } = useAuthStore();
+  const [passcode, setPasscode] = useState('');
+  const [loading, setLoading] = useState(false);
+  const shakeAnim = useRef(new Animated.Value(0)).current;
 
-    useEffect(() => {
-        if (error) {
-            Animated.sequence([
-                Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
-                Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
-                Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
-                Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
-                Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
-            ]).start();
-        }
-    }, [error]);
+  const handleUnlock = async () => {
+    if (!passcode.trim()) return;
+    setLoading(true);
+    const success = await unlockWithPasscode(passcode);
+    setLoading(false);
 
-    const handleUnlock = async () => {
-        const success = await checkPassword(password);
-        if (!success) {
-            setPassword('');
-        }
-    };
+    if (!success) {
+      Animated.sequence([
+        Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
+        Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
+        Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
+        Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
+      ]).start();
+      setPasscode('');
+    }
+  };
 
-    return (
-        <View style={styles.outerContainer}>
-            <LinearGradient
-                colors={mode === 'dark'
-                    ? ['#000000', '#0a0a1a', '#111133']
-                    : ['#E0ECFF', '#F0F4FF', '#FFFFFF']
-                }
-                style={StyleSheet.absoluteFill}
+  const handleBiometric = async () => {
+    setLoading(true);
+    await unlockWithBiometric();
+    setLoading(false);
+  };
+
+  return (
+    <GlassContainer gradient>
+      <View style={styles.container}>
+        <View style={styles.center}>
+          <LinearGradient
+            colors={[colors.gradientStart, colors.gradientEnd]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.logoCircle, { shadowColor: colors.accent }]}
+          >
+            <Text style={styles.logoText}>SQ</Text>
+          </LinearGradient>
+
+          <Text style={[styles.appName, { color: colors.text }]}>SnapQuote</Text>
+          <Text style={[styles.tagline, { color: colors.textSecondary }]}>
+            Professional quotes in seconds
+          </Text>
+
+          <Animated.View
+            style={[styles.inputArea, { transform: [{ translateX: shakeAnim }] }]}
+          >
+            <GlassInput
+              label="Enter Passcode"
+              placeholder="Your passcode"
+              secureTextEntry
+              value={passcode}
+              onChangeText={setPasscode}
+              onSubmitEditing={handleUnlock}
+              error={error ?? undefined}
+              containerStyle={{ width: '100%' }}
+              returnKeyType="go"
+              autoFocus
             />
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={styles.container}
-            >
-                <Animated.View style={[styles.content, { transform: [{ translateX: shakeAnim }] }]}>
-                    {/* App Logo */}
-                    <LinearGradient
-                        colors={[colors.gradientStart, colors.gradientEnd]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.logo}
-                    >
-                        <Text style={styles.logoText}>SQ</Text>
-                    </LinearGradient>
 
-                    <Text style={[styles.title, { color: colors.text }]}>SnapQuote</Text>
-                    <Text style={[styles.subtitle, { color: colors.textSecondary }]}>🔒 Locked</Text>
+            <GlassButton
+              title="Unlock"
+              onPress={handleUnlock}
+              loading={loading}
+              size="lg"
+              style={{ width: '100%', marginTop: spacing.md }}
+            />
+          </Animated.View>
 
-                    {/* Glass Container */}
-                    <View style={[styles.glassCard, {
-                        backgroundColor: mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.8)',
-                        borderColor: colors.glassBorder,
-                    }]}>
-                        <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>PASSWORD</Text>
-                        <View style={[styles.inputContainer, {
-                            backgroundColor: colors.inputBg,
-                            borderColor: error ? colors.error : colors.border,
-                        }]}>
-                            <Text style={styles.lockIcon}>🔑</Text>
-                            <TextInput
-                                value={password}
-                                onChangeText={setPassword}
-                                placeholder="Enter password"
-                                placeholderTextColor={colors.textSecondary}
-                                secureTextEntry
-                                style={[styles.input, { color: colors.text }]}
-                                onSubmitEditing={handleUnlock}
-                                autoFocus
-                            />
-                        </View>
-
-                        {error ? (
-                            <View style={[styles.errorContainer, { backgroundColor: colors.error + '15' }]}>
-                                <Text style={[styles.errorText, { color: colors.error }]}>⚠️ {error}</Text>
-                            </View>
-                        ) : null}
-
-                        <TouchableOpacity onPress={handleUnlock} activeOpacity={0.85} style={styles.unlockWrapper}>
-                            <LinearGradient
-                                colors={[colors.gradientStart, colors.gradientEnd]}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={styles.unlockButton}
-                            >
-                                <Text style={styles.unlockText}>Unlock</Text>
-                                <Text style={styles.unlockArrow}>→</Text>
-                            </LinearGradient>
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* Password dots indicator */}
-                    <View style={styles.dotsRow}>
-                        {[0, 1, 2, 3, 4, 5].map((i) => (
-                            <View
-                                key={i}
-                                style={[
-                                    styles.dot,
-                                    {
-                                        backgroundColor: i < password.length ? colors.accent : (mode === 'dark' ? 'rgba(255,255,255,0.15)' : '#E5E7EB'),
-                                    },
-                                ]}
-                            />
-                        ))}
-                    </View>
-                </Animated.View>
-            </KeyboardAvoidingView>
+          {isBiometricAvailable && biometricEnabled && (
+            <GlassButton
+              title="Use Face ID / Fingerprint"
+              onPress={handleBiometric}
+              variant="ghost"
+              style={{ marginTop: spacing.lg }}
+            />
+          )}
         </View>
-    );
-};
+
+        <Text style={[styles.version, { color: colors.textSecondary }]}>
+          SnapQuote v2
+        </Text>
+      </View>
+    </GlassContainer>
+  );
+}
 
 const styles = StyleSheet.create({
-    outerContainer: { flex: 1 },
-    container: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    content: {
-        alignItems: 'center',
-        width: '100%',
-        paddingHorizontal: 32,
-    },
-    logo: {
-        width: 88,
-        height: 88,
-        borderRadius: 28,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 20,
-        shadowColor: '#3B82F6',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 16,
-        elevation: 8,
-    },
-    logoText: {
-        fontSize: 36,
-        fontWeight: '800',
-        color: '#FFFFFF',
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: '800',
-        marginBottom: 4,
-    },
-    subtitle: {
-        fontSize: 16,
-        marginBottom: 32,
-        fontWeight: '500',
-    },
-    glassCard: {
-        width: '100%',
-        borderRadius: 24,
-        borderWidth: 1,
-        padding: 24,
-    },
-    inputLabel: {
-        fontSize: 11,
-        fontWeight: '700',
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-        marginBottom: 8,
-    },
-    inputContainer: {
-        width: '100%',
-        height: 52,
-        borderRadius: 16,
-        borderWidth: 1,
-        paddingHorizontal: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    lockIcon: {
-        fontSize: 18,
-        marginRight: 10,
-    },
-    input: {
-        flex: 1,
-        fontSize: 16,
-    },
-    errorContainer: {
-        borderRadius: 12,
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        marginBottom: 16,
-    },
-    errorText: {
-        fontSize: 13,
-        fontWeight: '500',
-        textAlign: 'center',
-    },
-    unlockWrapper: {
-        borderRadius: 26,
-        overflow: 'hidden',
-    },
-    unlockButton: {
-        width: '100%',
-        height: 52,
-        borderRadius: 26,
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: 8,
-    },
-    unlockText: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#FFFFFF',
-    },
-    unlockArrow: {
-        fontSize: 20,
-        fontWeight: '600',
-        color: '#FFFFFF',
-    },
-    dotsRow: {
-        flexDirection: 'row',
-        gap: 8,
-        marginTop: 24,
-    },
-    dot: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-    },
+  container: {
+    flex: 1,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.huge,
+    paddingHorizontal: spacing.xxl,
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+  },
+  logoCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  logoText: {
+    color: '#FFFFFF',
+    fontSize: fontSize.xxl,
+    fontWeight: fontWeight.bold,
+  },
+  appName: {
+    fontSize: fontSize.xxxl,
+    fontWeight: fontWeight.bold,
+    marginTop: spacing.lg,
+  },
+  tagline: {
+    fontSize: fontSize.md,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xxxl,
+  },
+  inputArea: {
+    width: '100%',
+    maxWidth: 320,
+    alignItems: 'center',
+  },
+  version: {
+    fontSize: fontSize.xs,
+  },
 });
