@@ -36,7 +36,15 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-# generated native folders
+# generated native folders (specific, not entire directories)
+/android/app/build/
+/android/app/.cxx/
+/android/build/
+/android/.gradle/
+/android/captures/
+/android/local.properties
+/android/keystores/
+/android/*.log
+
 /ios
-/android
 .claude/
