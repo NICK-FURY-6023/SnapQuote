@@ -1,19 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { router } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import GlassContainer from '../../src/components/GlassContainer';
-import GlassCard from '../../src/components/GlassCard';
-import GlassInput from '../../src/components/GlassInput';
-import GlassChip from '../../src/components/GlassChip';
-import GlassButton from '../../src/components/GlassButton';
-import { ListSkeleton } from '../../src/components/GlassSkeleton';
-import { useTheme } from '../../src/theme/ThemeProvider';
-import { useQuotationStore } from '../../src/stores/quotationStore';
-import { spacing, fontSize, fontWeight } from '../../src/theme/tokens';
+import GlassContainer from '../components/GlassContainer';
+import GlassCard from '../components/GlassCard';
+import GlassInput from '../components/GlassInput';
+import GlassChip from '../components/GlassChip';
+import GlassButton from '../components/GlassButton';
+import { ListSkeleton } from '../components/GlassSkeleton';
+import { useTheme } from '../theme/ThemeProvider';
+import { useQuotationStore } from '../stores/quotationStore';
+import { spacing, fontSize, fontWeight } from '../theme/tokens';
+import { RootStackParamList } from '../navigation/navigationRef';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function SavedQuotations() {
   const { colors } = useTheme();
+  const navigation = useNavigation<NavigationProp>();
   const { quotations, loading, loadQuotations, deleteQuotation, searchQuotations } = useQuotationStore();
   const [search, setSearch] = useState('');
   const [showSearch, setShowSearch] = useState(false);
@@ -48,7 +53,7 @@ export default function SavedQuotations() {
 
   const renderItem = ({ item }: any) => (
     <GlassCard
-      onPress={() => router.push(`/quotation/${item.id}`)}
+      onPress={() => navigation.navigate('EditQuotation', { id: item.id })}
       style={styles.quoteCard}
     >
       <View style={styles.quoteHeader}>
@@ -112,7 +117,7 @@ export default function SavedQuotations() {
             </Text>
             <GlassButton
               title="Create New Quote"
-              onPress={() => router.push('/quotation/new')}
+              onPress={() => navigation.navigate('NewQuotation')}
               style={{ marginTop: spacing.lg }}
             />
           </View>

@@ -1,19 +1,23 @@
 import React, { useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, StyleSheet, RefreshControl } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import GlassContainer from '../../src/components/GlassContainer';
-import GlassCard from '../../src/components/GlassCard';
-import GlassButton from '../../src/components/GlassButton';
-import GlassChip from '../../src/components/GlassChip';
-import { CardSkeleton } from '../../src/components/GlassSkeleton';
-import { useTheme } from '../../src/theme/ThemeProvider';
-import { useQuotationStore } from '../../src/stores/quotationStore';
-import { spacing, fontSize, fontWeight, borderRadius, shadow } from '../../src/theme/tokens';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import GlassContainer from '../components/GlassContainer';
+import GlassCard from '../components/GlassCard';
+import GlassButton from '../components/GlassButton';
+import GlassChip from '../components/GlassChip';
+import { CardSkeleton } from '../components/GlassSkeleton';
+import { useTheme } from '../theme/ThemeProvider';
+import { useQuotationStore } from '../stores/quotationStore';
+import { spacing, fontSize, fontWeight, borderRadius } from '../theme/tokens';
+import { RootStackParamList } from '../navigation/navigationRef';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function HomeScreen() {
   const { colors } = useTheme();
+  const navigation = useNavigation<NavigationProp>();
   const { quotations, loading, loadQuotations } = useQuotationStore();
   const [refreshing, setRefreshing] = React.useState(false);
 
@@ -37,10 +41,10 @@ export default function HomeScreen() {
   const pendingSync = quotations.filter((q) => q.sync_status === 'pending').length;
 
   const quickActions = [
-    { title: 'New Quote', icon: '➕', route: '/quotation/new', color: colors.accent },
-    { title: 'Scan Product', icon: '📷', route: '/scan', color: colors.success },
-    { title: 'Quick Entry', icon: '⌨️', route: '/text-input', color: colors.warning },
-    { title: 'Saved Quotes', icon: '📄', route: '/(tabs)/quotes', color: colors.info },
+    { title: 'New Quote', icon: '➕', route: 'NewQuotation' as const, color: colors.accent },
+    { title: 'Scan Product', icon: '📷', route: 'Scan' as const, color: colors.success },
+    { title: 'Quick Entry', icon: '⌨️', route: 'TextInput' as const, color: colors.warning },
+    { title: 'Saved Quotes', icon: '📄', route: 'Quotes' as const, color: colors.info },
   ];
 
   const recentQuotes = quotations.slice(0, 5);
@@ -79,16 +83,19 @@ export default function HomeScreen() {
           {/* Quick actions */}
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
           <View style={styles.quickActionsGrid}>
-            {quickActions.map((action) => (
-              <GlassCard
-                key={action.route}
-                onPress={() => router.push(action.route as any)}
-                style={{ ...styles.actionCard, borderColor: action.color + '30' }}
-              >
-                <Text style={styles.actionIcon}>{action.icon}</Text>
-                <Text style={[styles.actionLabel, { color: colors.text }]}>{action.title}</Text>
-              </GlassCard>
-            ))}
+            {quickActions.map((action) => {
+              const screenName = action.route;
+              return (
+                <GlassCard
+                  key={screenName}
+                  onPress={() => navigation.navigate(screenName as any)}
+                  style={{ ...styles.actionCard, borderColor: action.color + '30' }}
+                >
+                  <Text style={styles.actionIcon}>{action.icon}</Text>
+                  <Text style={[styles.actionLabel, { color: colors.text }]}>{action.title}</Text>
+                </GlassCard>
+              );
+            })}
           </View>
 
           {/* Recent quotes */}
@@ -105,7 +112,7 @@ export default function HomeScreen() {
             recentQuotes.map((quote) => (
               <GlassCard
                 key={quote.id}
-                onPress={() => router.push(`/quotation/${quote.id}`)}
+                onPress={() => navigation.navigate('EditQuotation', { id: quote.id })}
                 style={styles.quoteCard}
               >
                 <View style={styles.quoteRow}>

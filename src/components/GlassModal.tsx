@@ -1,6 +1,6 @@
 import React from 'react';
 import { Modal, View, Text, StyleSheet, TouchableOpacity, Dimensions, ViewStyle } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { BlurView } from '@react-native-community/blur';
 import { useTheme } from '../theme/ThemeProvider';
 import { borderRadius, spacing, fontSize, fontWeight } from '../theme/tokens';
 
@@ -19,8 +19,8 @@ export default function GlassModal({ visible, onClose, title, children, style }:
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <BlurView
-          intensity={isDark ? 60 : 80}
-          tint={isDark ? 'dark' : 'light'}
+          blurAmount={isDark ? 30 : 40}
+          blurType={isDark ? 'dark' : 'light'}
           style={StyleSheet.absoluteFill}
         />
         <View

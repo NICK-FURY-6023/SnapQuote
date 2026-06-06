@@ -1,9 +1,13 @@
 import { create } from 'zustand';
-import * as SecureStore from 'expo-secure-store';
+import * as Keychain from 'react-native-keychain';
+import ReactNativeBiometrics from 'react-native-biometrics';
 
 const SESSION_KEY = 'snapquote_session';
 const BIOMETRIC_KEY = 'snapquote_biometric_enabled';
+const PASSCODE_KEY = 'snapquote_passcode';
 const SESSION_DURATION_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+
+const rnBiometrics = new ReactNativeBiometrics();
 
 interface AuthState {
   isUnlocked: boolean;
@@ -20,19 +24,23 @@ interface AuthState {
   lock: () => Promise<void>;
 }
 
-async function getStoredSession(): Promise<string | null> {
+async function getSecureItem(key: string): Promise<string | null> {
   try {
-    return await SecureStore.getItemAsync(SESSION_KEY);
+    const credentials = await Keychain.getGenericPassword({ service: key });
+    if (credentials && typeof credentials === 'object' && 'password' in credentials) {
+      return credentials.password;
+    }
+    return null;
   } catch {
     return null;
   }
 }
 
-async function getStoredPasscode(): Promise<string | null> {
+async function setSecureItem(key: string, value: string): Promise<void> {
   try {
-    return await SecureStore.getItemAsync('snapquote_passcode');
+    await Keychain.setGenericPassword(key, value, { service: key });
   } catch {
-    return null;
+    console.warn('Keychain write failed for:', key);
   }
 }
 
@@ -46,8 +54,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   checkSession: async () => {
     try {
       set({ loading: true, error: null });
-      const session = await getStoredSession();
-      const biometricEnabled = await SecureStore.getItemAsync(BIOMETRIC_KEY);
+      const session = await getSecureItem(SESSION_KEY);
+      const biometricEnabled = await getSecureItem(BIOMETRIC_KEY);
 
       if (session) {
         const timestamp = parseInt(session, 10);
@@ -59,11 +67,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       // Check if biometric is available
-      const { LocalAuthentication } = require('expo-local-authentication');
-      const compatible = await LocalAuthentication.hasHardwareAsync();
+      const { available } = await rnBiometrics.isSensorAvailable();
       set({
         isUnlocked: false,
-        isBiometricAvailable: compatible,
+        isBiometricAvailable: available,
         biometricEnabled: biometricEnabled === 'true',
         loading: false,
       });
@@ -75,18 +82,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   unlockWithPasscode: async (passcode: string): Promise<boolean> => {
     try {
       set({ error: null });
-      const stored = await getStoredPasscode();
+      const stored = await getSecureItem(PASSCODE_KEY);
 
       if (!stored) {
         // No passcode set yet — accept any and save it (first-time setup)
-        await SecureStore.setItemAsync('snapquote_passcode', passcode);
-        await SecureStore.setItemAsync(SESSION_KEY, String(Date.now()));
+        await setSecureItem(PASSCODE_KEY, passcode);
+        await setSecureItem(SESSION_KEY, String(Date.now()));
         set({ isUnlocked: true, loading: false });
         return true;
       }
 
       if (passcode === stored) {
-        await SecureStore.setItemAsync(SESSION_KEY, String(Date.now()));
+        await setSecureItem(SESSION_KEY, String(Date.now()));
         set({ isUnlocked: true, loading: false });
         return true;
       }
@@ -102,14 +109,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   unlockWithBiometric: async (): Promise<boolean> => {
     try {
       set({ error: null });
-      const { LocalAuthentication } = require('expo-local-authentication');
-      const result = await LocalAuthentication.authenticateAsync({
+      const { success } = await rnBiometrics.simplePrompt({
         promptMessage: 'Unlock SnapQuote',
-        fallbackLabel: 'Use Passcode',
-      });
+        cancelButtonText: 'Use Passcode',
+      } as any);
 
-      if (result.success) {
-        await SecureStore.setItemAsync(SESSION_KEY, String(Date.now()));
+      if (success) {
+        await setSecureItem(SESSION_KEY, String(Date.now()));
         set({ isUnlocked: true, loading: false });
         return true;
       }
@@ -123,17 +129,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   setPasscode: async (passcode: string) => {
-    await SecureStore.setItemAsync('snapquote_passcode', passcode);
+    await setSecureItem(PASSCODE_KEY, passcode);
   },
 
   setBiometricEnabled: async (enabled: boolean) => {
-    await SecureStore.setItemAsync(BIOMETRIC_KEY, String(enabled));
+    await setSecureItem(BIOMETRIC_KEY, String(enabled));
     set({ biometricEnabled: enabled });
   },
 
   lock: async () => {
     try {
-      await SecureStore.setItemAsync(SESSION_KEY, String(0));
+      await setSecureItem(SESSION_KEY, String(0));
     } catch {
       // Ignore — we still lock even if secure store write fails
     }

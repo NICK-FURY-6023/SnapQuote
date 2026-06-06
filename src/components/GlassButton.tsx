@@ -7,7 +7,7 @@ import {
   ViewStyle,
   TextStyle,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from 'react-native-linear-gradient';
 import { useTheme } from '../theme/ThemeProvider';
 import { borderRadius, spacing, fontSize, fontWeight } from '../theme/tokens';
 

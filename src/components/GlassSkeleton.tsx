@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Animated, StyleSheet, ViewStyle } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from 'react-native-linear-gradient';
 import { useTheme } from '../theme/ThemeProvider';
 import { borderRadius, spacing } from '../theme/tokens';
 

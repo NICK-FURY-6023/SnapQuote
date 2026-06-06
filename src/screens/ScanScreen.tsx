@@ -1,38 +1,36 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { router } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import GlassContainer from '../src/components/GlassContainer';
-import GlassCard from '../src/components/GlassCard';
-import GlassButton from '../src/components/GlassButton';
-import { useTheme } from '../src/theme/ThemeProvider';
-import { useQuotationStore } from '../src/stores/quotationStore';
-import { spacing, fontSize, fontWeight, borderRadius } from '../src/theme/tokens';
+import Icon from 'react-native-vector-icons/Ionicons';
+import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
+import GlassContainer from '../components/GlassContainer';
+import GlassCard from '../components/GlassCard';
+import GlassButton from '../components/GlassButton';
+import { useTheme } from '../theme/ThemeProvider';
+import { useQuotationStore } from '../stores/quotationStore';
+import { spacing, fontSize, fontWeight, borderRadius } from '../theme/tokens';
+import { RootStackParamList } from '../navigation/navigationRef';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function ScanScreen() {
   const { colors } = useTheme();
-  const [permission, requestPermission] = useCameraPermissions();
-  const cameraRef = useRef<CameraView>(null);
+  const navigation = useNavigation<NavigationProp>();
+  const { hasPermission, requestPermission } = useCameraPermission();
+  const device = useCameraDevice('back');
+  const cameraRef = useRef<Camera>(null);
   const [capturing, setCapturing] = useState(false);
 
   const handleCapture = async () => {
     if (!cameraRef.current) return;
     setCapturing(true);
     try {
-      const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.7,
-        base64: true,
-      });
+      const photo = await cameraRef.current.takePhoto({});
 
-      if (photo?.uri) {
-        // Save photo locally for later OCR processing
-        // Full Cloud Vision OCR integration will be done in the services layer
-        router.push({
-          pathname: '/text-input',
-          params: { photoUri: photo.uri },
-        });
+      if (photo?.path) {
+        navigation.navigate('TextInput', { photoUri: `file://${photo.path}` });
       }
     } catch (err) {
       console.warn('Capture failed:', err);
@@ -40,24 +38,34 @@ export default function ScanScreen() {
     setCapturing(false);
   };
 
-  if (!permission) {
+  const handleTypeInstead = () => {
+    navigation.navigate('TextInput');
+  };
+
+  // Camera not available (no back camera)
+  if (!device) {
     return (
       <GlassContainer>
         <SafeAreaView style={styles.safe}>
           <View style={styles.center}>
-            <Text style={[{ color: colors.textSecondary }]}>Camera loading...</Text>
+            <Icon name="camera-outline" size={64} color={colors.textSecondary} />
+            <Text style={[styles.permissionText, { color: colors.text }]}>Camera not available</Text>
+            <Text style={[styles.permissionSub, { color: colors.textSecondary }]}>
+              No camera detected on this device.
+            </Text>
+            <GlassButton title="Type Instead" onPress={handleTypeInstead} style={{ marginTop: spacing.lg }} />
           </View>
         </SafeAreaView>
       </GlassContainer>
     );
   }
 
-  if (!permission.granted) {
+  if (!hasPermission) {
     return (
       <GlassContainer>
         <SafeAreaView style={styles.safe}>
           <View style={styles.center}>
-            <Ionicons name="camera-outline" size={64} color={colors.textSecondary} />
+            <Icon name="camera-outline" size={64} color={colors.textSecondary} />
             <Text style={[styles.permissionText, { color: colors.text }]}>Camera access needed</Text>
             <Text style={[styles.permissionSub, { color: colors.textSecondary }]}>
               SnapQuote needs camera access to scan products for quotations.
@@ -71,18 +79,19 @@ export default function ScanScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <CameraView
+      <Camera
         ref={cameraRef}
         style={StyleSheet.absoluteFill}
-        facing="back"
-        enableTorch={false}
+        device={device}
+        isActive={true}
+        photo={true}
       >
         {/* Overlay */}
         <View style={styles.overlay}>
           <SafeAreaView style={styles.safe} edges={['top']}>
             <View style={[styles.topBar, { backgroundColor: colors.glass }]}>
-              <TouchableOpacity onPress={() => router.back()}>
-                <Ionicons name="close" size={28} color={colors.text} />
+              <TouchableOpacity onPress={() => navigation.goBack()}>
+                <Icon name="close" size={28} color={colors.text} />
               </TouchableOpacity>
               <Text style={[styles.topTitle, { color: colors.text }]}>Scan Product</Text>
               <View style={{ width: 28 }} />
@@ -101,7 +110,7 @@ export default function ScanScreen() {
           {/* Bottom controls */}
           <View style={styles.bottomControls}>
             <TouchableOpacity
-              onPress={() => router.push('/text-input')}
+              onPress={handleTypeInstead}
               style={styles.skipBtn}
             >
               <Text style={[styles.skipText, { color: colors.textSecondary }]}>Type instead</Text>
@@ -116,7 +125,7 @@ export default function ScanScreen() {
             <View style={{ width: 80 }} />
           </View>
         </View>
-      </CameraView>
+      </Camera>
     </View>
   );
 }

@@ -2,15 +2,20 @@ import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, ScrollView, StyleSheet, TouchableOpacity, Alert,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import GlassContainer from '../src/components/GlassContainer';
-import GlassCard from '../src/components/GlassCard';
-import GlassButton from '../src/components/GlassButton';
-import { useTheme } from '../src/theme/ThemeProvider';
-import { useQuotationStore } from '../src/stores/quotationStore';
-import { spacing, fontSize, fontWeight, borderRadius } from '../src/theme/tokens';
+import Icon from 'react-native-vector-icons/Ionicons';
+import GlassContainer from '../components/GlassContainer';
+import GlassCard from '../components/GlassCard';
+import GlassButton from '../components/GlassButton';
+import { useTheme } from '../theme/ThemeProvider';
+import { useQuotationStore } from '../stores/quotationStore';
+import { spacing, fontSize, fontWeight, borderRadius } from '../theme/tokens';
+import { RootStackParamList } from '../navigation/navigationRef';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type TextInputRouteProp = RouteProp<RootStackParamList, 'TextInput'>;
 
 /**
  * Smart parser for text input.
@@ -64,7 +69,9 @@ function parseLine(line: string): { name: string; qty: number; rate: number } | 
 
 export default function TextInputScreen() {
   const { colors } = useTheme();
-  const params = useLocalSearchParams<{ photoUri?: string }>();
+  const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<TextInputRouteProp>();
+  const photoUri = route.params?.photoUri;
   const { createNewQuotation, addItem, updateItem, currentItems: items } = useQuotationStore();
   const [rawText, setRawText] = useState('');
   const [parsed, setParsed] = useState<{ name: string; qty: number; rate: number }[]>([]);
@@ -83,12 +90,6 @@ export default function TextInputScreen() {
   };
 
   const handleApply = async () => {
-    // Replace items with parsed results
-    // Remove existing items except first, then update
-    while (items.length > 1) {
-      // We'll just recreate
-    }
-
     for (let i = 0; i < parsed.length; i++) {
       const p = parsed[i];
       if (i < items.length) {
@@ -98,7 +99,6 @@ export default function TextInputScreen() {
         updateItem(i, 'unit', 'Pc');
       } else {
         addItem();
-        // Update the newly added item at index i
         setTimeout(() => {
           updateItem(i, 'item_name', p.name);
           updateItem(i, 'quantity', p.qty);
@@ -108,15 +108,15 @@ export default function TextInputScreen() {
       }
     }
 
-    router.push('/quotation/new');
+    navigation.navigate('NewQuotation');
   };
 
   return (
     <GlassContainer>
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Icon name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Quick Entry</Text>
           <View style={{ width: 24 }} />
@@ -124,7 +124,7 @@ export default function TextInputScreen() {
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <Text style={[styles.instructions, { color: colors.textSecondary }]}>
-            Enter items one per line. Format: "ItemName Qty Rate"{"\n"}
+            Enter items one per line. Format: "ItemName Qty Rate"{'\n'}
             Examples:{'\n'}
             "Cement Bag 50kg 2 350"{'\n'}
             "Paint 5L 3 x 450"{'\n'}

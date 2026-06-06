@@ -1,9 +1,15 @@
 import React from 'react';
-import { Tabs } from 'expo-router';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, StyleSheet } from 'react-native';
-import { BlurView } from 'expo-blur';
-import { useTheme } from '../../src/theme/ThemeProvider';
-import { borderRadius, spacing, fontSize, fontWeight, shadow } from '../../src/theme/tokens';
+import { BlurView } from '@react-native-community/blur';
+import { useTheme } from '../theme/ThemeProvider';
+import { spacing, fontSize, fontWeight, shadow } from '../theme/tokens';
+import { MainTabParamList } from './navigationRef';
+import HomeScreen from '../screens/HomeScreen';
+import QuotesScreen from '../screens/QuotesScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+
+const Tab = createBottomTabNavigator<MainTabParamList>();
 
 function TabIcon({ label, icon, focused, color }: { label: string; icon: string; focused: boolean; color: string }) {
   return (
@@ -16,38 +22,45 @@ function TabIcon({ label, icon, focused, color }: { label: string; icon: string;
   );
 }
 
-export default function TabsLayout() {
+export function MainNavigator() {
   const { colors, isDark } = useTheme();
 
-  // Glass tab bar
-  const tabBarStyle = {
-    position: 'absolute' as const,
-    bottom: 20,
-    left: 16,
-    right: 16,
-    height: 64,
-    borderRadius: borderRadius.xxl,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
-    backgroundColor: isDark ? colors.glass : colors.glass,
-    ...shadow.lg,
-    shadowColor: colors.shadow,
-    elevation: 8,
-    overflow: 'hidden' as const,
-  };
-
   return (
-    <Tabs
+    <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarStyle,
+        tabBarStyle: {
+          position: 'absolute' as const,
+          bottom: 20,
+          left: 16,
+          right: 16,
+          height: 64,
+          borderRadius: 24,
+          borderWidth: 1,
+          borderColor: colors.glassBorder,
+          backgroundColor: colors.glass,
+          ...shadow.lg,
+          shadowColor: colors.shadow,
+          elevation: 8,
+          overflow: 'hidden' as const,
+        },
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarShowLabel: false,
+        tabBarBackground: () => (
+          isDark ? (
+            <BlurView
+              blurType="dark"
+              blurAmount={20}
+              style={StyleSheet.absoluteFill}
+            />
+          ) : null
+        ),
       }}
     >
-      <Tabs.Screen
-        name="index"
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
         options={{
           tabBarLabel: 'Home',
           tabBarIcon: ({ focused, color }) => (
@@ -55,8 +68,9 @@ export default function TabsLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="quotes"
+      <Tab.Screen
+        name="Quotes"
+        component={QuotesScreen}
         options={{
           tabBarLabel: 'Quotes',
           tabBarIcon: ({ focused, color }) => (
@@ -64,8 +78,9 @@ export default function TabsLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="settings"
+      <Tab.Screen
+        name="Settings"
+        component={SettingsScreen}
         options={{
           tabBarLabel: 'Settings',
           tabBarIcon: ({ focused, color }) => (
@@ -73,7 +88,7 @@ export default function TabsLayout() {
           ),
         }}
       />
-    </Tabs>
+    </Tab.Navigator>
   );
 }
 
@@ -84,10 +99,10 @@ const styles = StyleSheet.create({
     paddingTop: 6,
   },
   tabIcon: {
-    fontSize: fontSize.xl,
+    fontSize: 22,
   },
   tabLabel: {
-    fontSize: fontSize.xs,
+    fontSize: 11,
     marginTop: 2,
   },
 });

@@ -2,18 +2,23 @@ import React, { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import GlassContainer from '../../src/components/GlassContainer';
-import GlassCard from '../../src/components/GlassCard';
-import GlassInput from '../../src/components/GlassInput';
-import GlassButton from '../../src/components/GlassButton';
-import GlassPicker from '../../src/components/GlassPicker';
-import { useTheme } from '../../src/theme/ThemeProvider';
-import { useQuotationStore } from '../../src/stores/quotationStore';
-import { spacing, fontSize, fontWeight, borderRadius } from '../../src/theme/tokens';
-import { UnitType } from '../../src/types';
+import Icon from 'react-native-vector-icons/Ionicons';
+import GlassContainer from '../components/GlassContainer';
+import GlassCard from '../components/GlassCard';
+import GlassInput from '../components/GlassInput';
+import GlassButton from '../components/GlassButton';
+import GlassPicker from '../components/GlassPicker';
+import { useTheme } from '../theme/ThemeProvider';
+import { useQuotationStore } from '../stores/quotationStore';
+import { spacing, fontSize, fontWeight } from '../theme/tokens';
+import { UnitType } from '../types';
+import { RootStackParamList } from '../navigation/navigationRef';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type NewQuotationRouteProp = RouteProp<RootStackParamList, 'NewQuotation'>;
 
 const UNIT_OPTIONS: { label: string; value: string }[] = [
   { label: 'Piece', value: 'Pc' },
@@ -35,7 +40,9 @@ const TAX_OPTIONS = [
 
 export default function NewQuotationScreen() {
   const { colors } = useTheme();
-  const params = useLocalSearchParams<{ templateId?: string }>();
+  const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<NewQuotationRouteProp>();
+  const templateId = route.params?.templateId;
   const {
     currentQuotation: quote, currentItems: items,
     createNewQuotation, setCustomerDetails,
@@ -53,7 +60,7 @@ export default function NewQuotationScreen() {
   const [taxPercent, setTaxPercent] = useState('0');
 
   useEffect(() => {
-    createNewQuotation(params.templateId);
+    createNewQuotation(templateId);
     return () => { clearCurrent(); };
   }, []);
 
@@ -91,7 +98,7 @@ export default function NewQuotationScreen() {
     setSaving(true);
     await saveCurrentQuotation();
     setSaving(false);
-    router.push('/preview');
+    navigation.navigate('Preview');
   };
 
   const handleSaveAndExit = async () => {
@@ -99,7 +106,7 @@ export default function NewQuotationScreen() {
     setSaving(true);
     await saveCurrentQuotation();
     setSaving(false);
-    router.back();
+    navigation.goBack();
   };
 
   const handleItemFieldChange = (index: number, field: string, value: any) => {
@@ -129,12 +136,12 @@ export default function NewQuotationScreen() {
       <SafeAreaView style={styles.safe} edges={['top']}>
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Icon name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>New Quotation</Text>
           <TouchableOpacity onPress={handleSaveAndExit}>
-            <Ionicons name="checkmark-circle" size={28} color={colors.accent} />
+            <Icon name="checkmark-circle" size={28} color={colors.accent} />
           </TouchableOpacity>
         </View>
 
@@ -168,7 +175,7 @@ export default function NewQuotationScreen() {
           <View style={styles.itemsHeader}>
             <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>ITEMS</Text>
             <TouchableOpacity onPress={addItem}>
-              <Ionicons name="add-circle" size={24} color={colors.accent} />
+              <Icon name="add-circle" size={24} color={colors.accent} />
             </TouchableOpacity>
           </View>
 
@@ -178,10 +185,10 @@ export default function NewQuotationScreen() {
                 <Text style={[styles.itemNumber, { color: colors.accent }]}>#{item.item_no}</Text>
                 <View style={styles.itemActions}>
                   <TouchableOpacity onPress={() => duplicateItem(index)} style={{ marginRight: spacing.sm }}>
-                    <Ionicons name="copy-outline" size={18} color={colors.textSecondary} />
+                    <Icon name="copy-outline" size={18} color={colors.textSecondary} />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => removeItem(index)}>
-                    <Ionicons name="trash-outline" size={18} color={colors.error} />
+                    <Icon name="trash-outline" size={18} color={colors.error} />
                   </TouchableOpacity>
                 </View>
               </View>

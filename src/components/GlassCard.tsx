@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, View, StyleSheet, ViewStyle } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { BlurView } from '@react-native-community/blur';
 import { useTheme } from '../theme/ThemeProvider';
 import { borderRadius, spacing, shadow as shadowTokens } from '../theme/tokens';
 
@@ -38,8 +38,8 @@ export default function GlassCard({ children, onPress, style, intensity = 40, no
       {/* If blur is requested, layer it */}
       {!noBlur && isDark && (
         <BlurView
-          intensity={intensity}
-          tint="dark"
+          blurAmount={Math.round(intensity / 2)}
+          blurType="dark"
           style={StyleSheet.absoluteFill}
         />
       )}

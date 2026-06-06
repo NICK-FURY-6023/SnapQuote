@@ -1,21 +1,21 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Share, Platform } from 'react-native';
-import { router } from 'expo-router';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Share } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
-import { LinearGradient } from 'expo-linear-gradient';
-import GlassContainer from '../src/components/GlassContainer';
-import GlassCard from '../src/components/GlassCard';
-import GlassButton from '../src/components/GlassButton';
-import GlassChip from '../src/components/GlassChip';
-import { useTheme } from '../src/theme/ThemeProvider';
-import { useQuotationStore } from '../src/stores/quotationStore';
-import { spacing, fontSize, fontWeight, borderRadius } from '../src/theme/tokens';
+import Icon from 'react-native-vector-icons/Ionicons';
+import LinearGradient from 'react-native-linear-gradient';
+import RNPrint from 'react-native-print';
+import GlassContainer from '../components/GlassContainer';
+import GlassCard from '../components/GlassCard';
+import GlassButton from '../components/GlassButton';
+import GlassChip from '../components/GlassChip';
+import { useTheme } from '../theme/ThemeProvider';
+import { useQuotationStore } from '../stores/quotationStore';
+import { spacing, fontSize, fontWeight, borderRadius } from '../theme/tokens';
 
 export default function PreviewScreen() {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
+  const navigation = useNavigation();
   const { currentQuotation: quote, currentItems: items } = useQuotationStore();
   const [exporting, setExporting] = useState<'pdf' | 'excel' | null>(null);
 
@@ -25,7 +25,7 @@ export default function PreviewScreen() {
         <SafeAreaView style={styles.safe}>
           <View style={styles.empty}>
             <Text style={[{ color: colors.textSecondary, fontSize: fontSize.lg }]}>No quotation to preview</Text>
-            <GlassButton title="Go Back" onPress={() => router.back()} style={{ marginTop: spacing.lg }} />
+            <GlassButton title="Go Back" onPress={() => navigation.goBack()} style={{ marginTop: spacing.lg }} />
           </View>
         </SafeAreaView>
       </GlassContainer>
@@ -101,15 +101,7 @@ export default function PreviewScreen() {
     setExporting('pdf');
     try {
       const html = generateHtml();
-      const { uri } = await Print.printToFileAsync({ html });
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: `Share Quote - ${quote.quote_number}`,
-        });
-      } else {
-        await Share.share({ url: uri });
-      }
+      await RNPrint.print({ html });
     } catch (err) {
       console.warn('PDF export failed:', err);
     }
@@ -120,8 +112,8 @@ export default function PreviewScreen() {
     <GlassContainer>
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Icon name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Preview</Text>
           <GlassChip label={quote.sync_status} variant={quote.sync_status === 'synced' ? 'success' : 'warning'} />
@@ -204,7 +196,7 @@ export default function PreviewScreen() {
               title="Download PDF"
               onPress={handleExportPDF}
               loading={exporting === 'pdf'}
-              icon={<Ionicons name="document-text" size={18} color="#fff" />}
+              icon={<Icon name="document-text" size={18} color="#fff" />}
               style={{ flex: 1 }}
             />
           </View>

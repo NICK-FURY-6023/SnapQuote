@@ -2,18 +2,23 @@ import React, { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import GlassContainer from '../../src/components/GlassContainer';
-import GlassCard from '../../src/components/GlassCard';
-import GlassInput from '../../src/components/GlassInput';
-import GlassButton from '../../src/components/GlassButton';
-import GlassPicker from '../../src/components/GlassPicker';
-import GlassChip from '../../src/components/GlassChip';
-import { useTheme } from '../../src/theme/ThemeProvider';
-import { useQuotationStore } from '../../src/stores/quotationStore';
-import { spacing, fontSize, fontWeight } from '../../src/theme/tokens';
+import Icon from 'react-native-vector-icons/Ionicons';
+import GlassContainer from '../components/GlassContainer';
+import GlassCard from '../components/GlassCard';
+import GlassInput from '../components/GlassInput';
+import GlassButton from '../components/GlassButton';
+import GlassPicker from '../components/GlassPicker';
+import GlassChip from '../components/GlassChip';
+import { useTheme } from '../theme/ThemeProvider';
+import { useQuotationStore } from '../stores/quotationStore';
+import { spacing, fontSize, fontWeight } from '../theme/tokens';
+import { RootStackParamList } from '../navigation/navigationRef';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type EditQuotationRouteProp = RouteProp<RootStackParamList, 'EditQuotation'>;
 
 const UNIT_OPTIONS = [
   { label: 'Piece', value: 'Pc' }, { label: 'Kg', value: 'Kg' }, { label: 'Litre', value: 'Ltr' },
@@ -22,8 +27,10 @@ const UNIT_OPTIONS = [
 ];
 
 export default function EditQuotationScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const route = useRoute<EditQuotationRouteProp>();
+  const { id } = route.params;
   const { colors } = useTheme();
+  const navigation = useNavigation<NavigationProp>();
   const {
     currentQuotation: quote, currentItems: items,
     loadQuotation, setCustomerDetails, addItem, duplicateItem, updateItem, removeItem,
@@ -41,7 +48,7 @@ export default function EditQuotationScreen() {
     setSaving(true);
     await saveCurrentQuotation();
     setSaving(false);
-    router.back();
+    navigation.goBack();
   };
 
   if (!quote) return null;
@@ -50,8 +57,8 @@ export default function EditQuotationScreen() {
     <GlassContainer>
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Icon name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>
             {quote.quote_number || 'Edit Quote'}
@@ -69,7 +76,7 @@ export default function EditQuotationScreen() {
           <View style={styles.itemsHeader}>
             <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>ITEMS</Text>
             <TouchableOpacity onPress={addItem}>
-              <Ionicons name="add-circle" size={22} color={colors.accent} />
+              <Icon name="add-circle" size={22} color={colors.accent} />
             </TouchableOpacity>
           </View>
 
@@ -79,10 +86,10 @@ export default function EditQuotationScreen() {
                 <Text style={[styles.itemNum, { color: colors.accent }]}>#{item.item_no}</Text>
                 <View style={styles.itemActions}>
                   <TouchableOpacity onPress={() => duplicateItem(index)} style={{ marginRight: spacing.sm }}>
-                    <Ionicons name="copy-outline" size={16} color={colors.textSecondary} />
+                    <Icon name="copy-outline" size={16} color={colors.textSecondary} />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => removeItem(index)}>
-                    <Ionicons name="trash-outline" size={16} color={colors.error} />
+                    <Icon name="trash-outline" size={16} color={colors.error} />
                   </TouchableOpacity>
                 </View>
               </View>

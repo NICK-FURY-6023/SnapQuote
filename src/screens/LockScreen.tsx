@@ -1,13 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
-import GlassInput from '../src/components/GlassInput';
-import GlassButton from '../src/components/GlassButton';
-import GlassContainer from '../src/components/GlassContainer';
-import { useTheme } from '../src/theme/ThemeProvider';
-import { useAuthStore } from '../src/stores/authStore';
-import { spacing, fontSize, fontWeight, borderRadius } from '../src/theme/tokens';
+import LinearGradient from 'react-native-linear-gradient';
+import GlassInput from '../components/GlassInput';
+import GlassButton from '../components/GlassButton';
+import GlassContainer from '../components/GlassContainer';
+import { useTheme } from '../theme/ThemeProvider';
+import { useAuthStore } from '../stores/authStore';
+import { spacing, fontSize, fontWeight } from '../theme/tokens';
 
 const { width } = Dimensions.get('window');
 
@@ -25,7 +24,6 @@ export default function LockScreen() {
     setLoading(false);
 
     if (!success) {
-      // Shake animation on error
       Animated.sequence([
         Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
         Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
@@ -45,9 +43,7 @@ export default function LockScreen() {
   return (
     <GlassContainer gradient>
       <View style={styles.container}>
-        {/* Center content */}
         <View style={styles.center}>
-          {/* Logo area */}
           <LinearGradient
             colors={[colors.gradientStart, colors.gradientEnd]}
             start={{ x: 0, y: 0 }}
@@ -62,7 +58,6 @@ export default function LockScreen() {
             Professional quotes in seconds
           </Text>
 
-          {/* Passcode input */}
           <Animated.View
             style={[styles.inputArea, { transform: [{ translateX: shakeAnim }] }]}
           >
@@ -88,7 +83,6 @@ export default function LockScreen() {
             />
           </Animated.View>
 
-          {/* Biometric button */}
           {isBiometricAvailable && biometricEnabled && (
             <GlassButton
               title="Use Face ID / Fingerprint"
@@ -99,7 +93,6 @@ export default function LockScreen() {
           )}
         </View>
 
-        {/* Bottom branding */}
         <Text style={[styles.version, { color: colors.textSecondary }]}>
           SnapQuote v2
         </Text>

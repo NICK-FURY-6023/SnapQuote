@@ -14,7 +14,7 @@ import { ImageAnnotatorClient } from '@google-cloud/vision';
 
 const visionClient = new ImageAnnotatorClient();
 
-export const ocrProcess = onCall({ maxInstances: 10 }, async (request) => {
+export const ocrProcess = onCall({ region: 'asia-south1', maxInstances: 10 }, async (request) => {
   const { image } = request.data as { image: { base64: string; mimeType: string } };
 
   if (!image?.base64) {
@@ -65,7 +65,7 @@ export const ocrProcess = onCall({ maxInstances: 10 }, async (request) => {
 // Receives product name query, checks cache, then fetches from
 // Google Shopping API → ScrapingBee fallback.
 
-export const autofill = onCall({ maxInstances: 20 }, async (request) => {
+export const autofill = onCall({ region: 'asia-south1', maxInstances: 20 }, async (request) => {
   const { query } = request.data as { query: string };
 
   if (!query?.trim()) {
@@ -128,7 +128,7 @@ export const autofill = onCall({ maxInstances: 20 }, async (request) => {
 // Triggered when a new quotation is created in Firestore.
 
 export const onQuotationCreated = onDocumentCreated(
-  'quotations/{quotationId}',
+  { document: 'quotations/{quotationId}', region: 'asia-south1' },
   async (event) => {
     const snap = event.data;
     if (!snap) return;

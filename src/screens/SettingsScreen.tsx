@@ -1,17 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Switch, Alert } from 'react-native';
-import { router } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import GlassContainer from '../../src/components/GlassContainer';
-import GlassCard from '../../src/components/GlassCard';
-import GlassInput from '../../src/components/GlassInput';
-import GlassButton from '../../src/components/GlassButton';
-import GlassPicker from '../../src/components/GlassPicker';
-import { useTheme } from '../../src/theme/ThemeProvider';
-import { useSettingsStore } from '../../src/stores/settingsStore';
-import { useAuthStore } from '../../src/stores/authStore';
-import { spacing, fontSize, fontWeight } from '../../src/theme/tokens';
-import { ThemeMode } from '../../src/types';
+import GlassContainer from '../components/GlassContainer';
+import GlassCard from '../components/GlassCard';
+import GlassInput from '../components/GlassInput';
+import GlassButton from '../components/GlassButton';
+import GlassPicker from '../components/GlassPicker';
+import { useTheme } from '../theme/ThemeProvider';
+import { useSettingsStore } from '../stores/settingsStore';
+import { useAuthStore } from '../stores/authStore';
+import { spacing, fontSize, fontWeight } from '../theme/tokens';
+import { ThemeMode } from '../types';
+import { RootStackParamList } from '../navigation/navigationRef';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const CURRENCY_OPTIONS = [
   { label: '₹ INR (Indian Rupee)', value: 'INR' },
@@ -28,7 +32,8 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 };
 
 export default function SettingsScreen() {
-  const { colors, isDark, mode } = useTheme();
+  const { colors, isDark } = useTheme();
+  const navigation = useNavigation<NavigationProp>();
   const { settings, loading, updateSettings, loadSettings } = useSettingsStore();
   const { lock, setPasscode } = useAuthStore();
   const [companyName, setCompanyName] = useState('');
@@ -110,7 +115,7 @@ export default function SettingsScreen() {
 
   const handleLock = async () => {
     await lock();
-    router.replace('/lock');
+    navigation.reset({ index: 0, routes: [{ name: 'Lock' }] });
   };
 
   return (

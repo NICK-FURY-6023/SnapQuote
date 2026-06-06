@@ -2,21 +2,26 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
 } from 'react-native';
-import { router } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import GlassContainer from '../src/components/GlassContainer';
-import GlassCard from '../src/components/GlassCard';
-import GlassInput from '../src/components/GlassInput';
-import GlassButton from '../src/components/GlassButton';
-import GlassChip from '../src/components/GlassChip';
-import { useTheme } from '../src/theme/ThemeProvider';
-import { useClientStore } from '../src/stores/clientStore';
-import { useQuotationStore } from '../src/stores/quotationStore';
-import { spacing, fontSize, fontWeight } from '../src/theme/tokens';
+import Icon from 'react-native-vector-icons/Ionicons';
+import GlassContainer from '../components/GlassContainer';
+import GlassCard from '../components/GlassCard';
+import GlassInput from '../components/GlassInput';
+import GlassButton from '../components/GlassButton';
+import GlassChip from '../components/GlassChip';
+import { useTheme } from '../theme/ThemeProvider';
+import { useClientStore } from '../stores/clientStore';
+import { useQuotationStore } from '../stores/quotationStore';
+import { spacing, fontSize, fontWeight } from '../theme/tokens';
+import { RootStackParamList } from '../navigation/navigationRef';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function CustomerDetailsScreen() {
   const { colors } = useTheme();
+  const navigation = useNavigation<NavigationProp>();
   const { clients, searchResults, loading, searchClients, loadClients, saveClient, clearSearch } = useClientStore();
   const { currentQuotation: quote, setCustomerDetails } = useQuotationStore();
   const [name, setName] = useState('');
@@ -53,7 +58,6 @@ export default function CustomerDetailsScreen() {
   const handleSaveAndContinue = async () => {
     setCustomerDetails({ customer_name: name, phone, address });
 
-    // Save to client DB if has name
     if (name.trim()) {
       try {
         await saveClient({ name, phone, address, email: email || null, user_id: 'local', notes: '' });
@@ -62,15 +66,15 @@ export default function CustomerDetailsScreen() {
       }
     }
 
-    router.push('/preview');
+    navigation.navigate('Preview');
   };
 
   return (
     <GlassContainer>
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Icon name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Customer Details</Text>
           <View style={{ width: 24 }} />
@@ -87,7 +91,7 @@ export default function CustomerDetailsScreen() {
                 placeholder="Type name or phone..."
                 value={searchQuery}
                 onChangeText={handleSearch}
-                icon={<Ionicons name="search" size={18} color={colors.textSecondary} />}
+                icon={<Icon name="search" size={18} color={colors.textSecondary} />}
               />
 
               {/* Search results */}
@@ -103,7 +107,7 @@ export default function CustomerDetailsScreen() {
                         <Text style={[styles.clientName, { color: colors.text }]}>{client.name}</Text>
                         <Text style={[styles.clientPhone, { color: colors.textSecondary }]}>{client.phone}</Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+                      <Icon name="chevron-forward" size={20} color={colors.textSecondary} />
                     </TouchableOpacity>
                   ))}
                 </GlassCard>
